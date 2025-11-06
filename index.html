@@ -21,22 +21,25 @@
         <label for="jsonUpload" class="upload-label">JSON-Logdatei auswählen</label>
         <input type="file" id="jsonUpload" accept=".json">
 
-        <!--
-          V5-ÄNDERUNG: Titel angepasst und Speicher-Button hinzugefügt.
-        -->
         <h2>Geräte-Analyse & Mapping</h2>
         
+        <!-- V5: Speicher-Button -->
         <button id="saveMappingBtn" class="action-button">
             Mapping im Browser speichern
         </button>
-
+        
         <!--
-          V5-ÄNDERUNG: Der Wrapper für horizontales Scrollen wird entfernt.
-          Die Karten werden von Natur aus responsiv sein.
+          V6-HINZUGEFÜGT: "Mapping löschen"-Button.
+          Wir fügen die Klasse 'danger' hinzu, um ihn rot zu gestalten (Regel 2).
         -->
+        <button id="clearMappingBtn" class="action-button danger">
+            Mapping löschen
+        </button>
+
+        <!-- V5: Karten-Container -->
         <div id="analysis-results">
             <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
-            <!-- Die Karten werden hier von app.js (V5) eingefügt -->
+            <!-- Die Karten werden hier von app.js (V6) eingefügt -->
         </div>
 
         <!-- V3: Debug/Status-Fenster -->
@@ -53,3 +56,4 @@
 </html>
 
 
+ 
