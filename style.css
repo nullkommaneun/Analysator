@@ -1,0 +1,117 @@
+/*
+  ARCHITEKTUR-HINWEIS (V1):
+  Dies ist das CSS für das "Hacker-Theme" (dunkler Modus),
+  ausgelagert aus der index.html.
+*/
+
+:root {
+    --bg-color: #1a1b26; /* Dunkler Hintergrund */
+    --fg-color: #a9b1d6; /* Heller Vordergrund (Text) */
+    --card-color: #24283b; /* Etwas hellerer Hintergrund für Elemente */
+    --border-color: #414868; /* Randfarbe */
+    --accent-color: #7aa2f7; /* Akzentfarbe (z.B. Links, Buttons) */
+    --accent-hover: #9ece6a; /* Akzentfarbe (Hover) */
+    --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'Consolas', 'Menlo', 'Courier New', monospace;
+}
+
+/* Globaler Reset und Basis-Styling */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--bg-color);
+    color: var(--fg-color);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--card-color);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+
+h1 {
+    color: var(--accent-hover);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+h2 {
+    color: var(--fg-color);
+    margin-top: 30px;
+    margin-bottom: 15px;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 5px;
+}
+
+/* V1: Styling für den Datei-Upload-Button */
+input[type="file"] {
+    display: none;
+}
+
+.upload-label {
+    display: inline-block;
+    padding: 12px 20px;
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.upload-label:hover {
+    background-color: var(--accent-hover);
+}
+
+/* V1: Styling für das <pre> Output-Element */
+#output {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 15px;
+    min-height: 200px;
+    max-height: 500px;
+    overflow: auto; /* Wichtig für große Datenmengen */
+    
+    /*
+      V1-FIX: Diese white-space und word-break Einstellungen sind entscheidend
+      für die lesbare Darstellung von JSON-Rohdaten.
+    */
+    white-space: pre-wrap;   /* Zeilen umbrechen, aber Formatierung beibehalten */
+    word-break: break-all;   /* Lange Zeichenketten (z.B. IDs) umbrechen */
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: #c0caf5; /* Leicht anderer Textfarbton für Code */
+}
+
+footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+footer a:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+ 
