@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BeaconBay Analyzer</title>
     
-    <!-- V1: CSS -->
     <link rel="stylesheet" href="style.css">
-    
-    <!-- V1: JS (als Modul) -->
     <script type="module" src="app.js" defer></script>
 </head>
 <body>
@@ -17,13 +14,9 @@
         <h1>BeaconBay Analyzer</h1>
         <p>Lade eine <code>beaconbay_log_... .json</code> Datei, um die Daten zu analysieren und zu visualisieren.</p>
 
-        <!-- V1: Dateiupload-Steuerelement -->
         <label for="jsonUpload" class="upload-label">JSON-Logdatei auswählen</label>
         <input type="file" id="jsonUpload" accept=".json">
 
-        <!--
-          V9-REFAKTORING: V8-Container (Deine Idee, jetzt mit "intelligentem Filter")
-        -->
         <h2>V9: Globale Zeitstrahl-Analyse (Beta)</h2>
         <details id="v9-container" class="v9-container">
             <summary>Triangulations-Zeitstrahl anzeigen/verstecken</summary>
@@ -31,18 +24,20 @@
             <div class="v9-content">
                 <p>Zeichnet die RSSI-Verläufe der "redseeligsten" (aktivsten) Geräte in einem globalen Graphen. Das Mapping wird für die Legende verwendet, falls vorhanden.</p>
                 
-                <!-- V9: "Intelligenter Filter" (ersetzt die V8-Checkbox-Liste) -->
-                <div class="v9-controls-simple">
+                <!-- 
+                  V9.1-KORREKTUR:
+                  'class="v9-controls-simple"' wurde zu 'id="v9-controls-simple"' geändert.
+                  Das behebt den "UI-Initialisierungsfehler (V9)".
+                -->
+                <div id="v9-controls-simple">
                     <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
                     <input type="number" id="v9-top-n-select" value="6" min="2" max="20" />
                 </div>
                 
-                <!-- V9: Graph-Button (vorher V8) -->
                 <button id="v9-generateBtn" class="action-button">
                     Globalen Graphen generieren
                 </button>
                 
-                <!-- V9: Graph-Container (vorher V8) -->
                 <div id="v9-graph-container">
                     <!-- Der globale SVG-Graph wird hier eingefügt -->
                 </div>
@@ -52,32 +47,25 @@
 
         <h2>Geräte-Analyse & Mapping</h2>
         
-        <!-- V5: Speicher-Button -->
         <button id="saveMappingBtn" class="action-button">
             Mapping im Browser speichern
         </button>
         
-        <!-- V6: Löschen-Button -->
         <button id="clearMappingBtn" class="action-button danger">
             Mapping löschen
         </button>
 
-        <!-- V7: Analyse-Header -->
         <div id="analysis-header">
-             <!-- Wird von JS befüllt, z.B. mit "Analyse von X Geräten..." -->
+             <!-- Wird von JS befüllt -->
         </div>
 
-        <!-- V5: Karten-Container -->
         <div id="analysis-results">
             <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
-            <!-- Die Karten werden hier von app.js (V7) eingefügt -->
         </div>
 
-        <!-- V3: Debug/Status-Fenster -->
         <h2>Status-Log (Debug):</h2>
         <pre id="output">Hier erscheinen Statusmeldungen...</pre>
 
-        <!-- V1/V7: Footer -->
         <footer>
             Danksagung: Dieses Tool verwendet [Sparkline-SVGs (erstellt von Gemini)](https://gemini.google.com/), um RSSI-Trends ohne externe Bibliotheken darzustellen.
             <br>
@@ -89,4 +77,3 @@
 </html>
 
 
- 
