@@ -11,6 +11,8 @@
     --danger-color: #f7768e; /* Rot für "Gefahr" */
     --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: 'Consolas', 'Menlo', 'Courier New', monospace;
+    --svg-stroke: #7aa2f7; /* V7: Farbe für Graphen-Linie */
+    --svg-text: #a9b1d6;   /* V7: Farbe für Graphen-Text */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,24 +34,22 @@ body {
     border: 1px solid var(--border-color);
 }
 
+h1, h2 {
+    color: var(--fg-color);
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+}
 h1 {
     color: var(--accent-hover);
     border-bottom: 2px solid var(--border-color);
-    padding-bottom: 10px;
-    margin-bottom: 20px;
 }
-
 h2 {
-    color: var(--fg-color);
     margin-top: 30px;
-    margin-bottom: 15px;
     border-bottom: 1px dashed var(--border-color);
-    padding-bottom: 5px;
 }
 
 /* V1: Upload-Button */
 input[type="file"] { display: none; }
-
 .upload-label {
     display: inline-block;
     padding: 12px 20px;
@@ -63,8 +63,7 @@ input[type="file"] { display: none; }
 }
 .upload-label:hover { background-color: var(--accent-hover); }
 
-
-/* V5: Action-Button (Speichern) */
+/* V5/V6: Action-Buttons */
 .action-button {
     display: block;
     width: 100%;
@@ -77,22 +76,12 @@ input[type="file"] { display: none; }
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin-bottom: 10px; /* V6: Abstand zwischen Buttons */
+    margin-bottom: 10px;
 }
-.action-button:hover {
-    background-color: #b9f27c;
-}
+.action-button:hover { background-color: #b9f27c; }
 
-/*
-  V6-HINZUGEFÜGT: Styling für den "Gefahr"-Button (Löschen)
-*/
-.action-button.danger {
-    background-color: var(--danger-color);
-}
-.action-button.danger:hover {
-    background-color: #ff9eaf; /* Helleres Rot */
-}
-
+.action-button.danger { background-color: var(--danger-color); }
+.action-button.danger:hover { background-color: #ff9eaf; }
 
 /* V3: Status-Output */
 #output {
@@ -110,12 +99,16 @@ input[type="file"] { display: none; }
     color: #c0caf5;
 }
 
-/* V5: Card-Layout Basis */
-#analysis-results {
-    padding: 0; 
+/* V7: Analyse-Header für Status-Text */
+#analysis-header p {
+    margin-bottom: 10px;
+    font-style: italic;
+    color: var(--fg-color);
 }
 
-#analysis-results p {
+/* V5: Card-Layout Basis */
+#analysis-results { padding: 0; }
+#analysis-results > p { /* V7: Nur das 'Lade...'-p ansprechen */
     margin-bottom: 10px;
     padding: 15px;
     background-color: var(--bg-color);
@@ -128,6 +121,23 @@ input[type="file"] { display: none; }
     border-radius: 8px;
     margin-bottom: 15px;
     overflow: hidden;
+    transition: box-shadow 0.3s ease;
+}
+/* V7: Visuelles Feedback, wenn die Karte geklickt wird/aktiv ist */
+.device-card.details-active {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--accent-color);
+}
+
+/*
+  V7-HINZUGEFÜGT: Klickbarer Bereich der Karte
+*/
+.card-clickable-area {
+    cursor: pointer;
+    outline: none; /* Für a11y, aber für 'div' OK */
+}
+.card-clickable-area:hover .card-row {
+    background-color: #2a2e42; /* V5-Hover-Effekt */
 }
 
 .card-row {
@@ -138,6 +148,7 @@ input[type="file"] { display: none; }
     padding: 12px 15px;
     border-bottom: 1px solid var(--border-color);
     line-height: 1.4;
+    transition: background-color 0.2s ease;
 }
 .device-card .card-row:last-child { border-bottom: none; }
 
@@ -154,7 +165,7 @@ input[type="file"] { display: none; }
     word-break: break-all;
 }
 
-/* Styling für Werte (V5) */
+/* V5/V6: Styling für Werte */
 .card-value.mono {
     font-family: var(--font-mono);
     font-size: 0.9rem;
@@ -168,24 +179,20 @@ input[type="file"] { display: none; }
     font-weight: bold;
     color: var(--accent-hover);
 }
-
-/*
-  V6-HINZUGEFÜGT: Visuelle Hervorhebung für gemappte Namen (Regel 2)
-*/
 .card-value.name.is-mapped {
-    color: var(--accent-hover); /* Grün */
+    color: var(--accent-hover);
 }
 .card-value.name.is-mapped::before {
-    content: '✔ '; /* Zeigt "gemappt" an */
+    content: '✔ ';
     color: var(--accent-hover);
     font-weight: bold;
     margin-right: 4px;
 }
 
-
 /* V5: Mapping-Input-Styling */
 .mapping-row {
     background-color: var(--card-color);
+    border-top: 1px solid var(--border-color); /* V7: Klare Trennung */
 }
 .mapping-row .card-label {
     color: var(--accent-hover);
@@ -207,6 +214,64 @@ input[type="file"] { display: none; }
     border-color: var(--accent-color);
     box-shadow: 0 0 5px var(--accent-color);
 }
+
+/*
+  V7-HINZUGEFÜGT: Styling für den aufklappbaren Detail-Bereich
+*/
+.card-details {
+    display: none; /* Standardmäßig versteckt */
+    padding: 15px;
+    background-color: #16161e; /* Noch dunklerer Hintergrund */
+    border-top: 1px solid var(--border-color);
+}
+.card-details.active {
+    display: block; /* Wird durch JS angezeigt */
+}
+
+.card-details h4 {
+    color: var(--accent-color);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+/* V7: Styling für die Advertisement-Daten */
+.advert-list {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    background-color: var(--bg-color);
+    border-radius: 5px;
+    padding: 10px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    border: 1px solid var(--border-color);
+    margin-bottom: 15px;
+}
+
+/* V7: Styling für den SVG-Graphen */
+.rssi-sparkline {
+    width: 100%;
+    height: auto;
+    background-color: var(--bg-color);
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    padding: 10px;
+}
+.rssi-sparkline .spark-line {
+    fill: none;
+    stroke: var(--svg-stroke);
+    stroke-width: 2;
+}
+.rssi-sparkline .spark-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    fill: var(--svg-text);
+}
+.rssi-sparkline .spark-axis {
+    stroke: var(--border-color);
+    stroke-width: 1;
+    stroke-dasharray: 2 2; /* Gestrichelte Linie */
+}
+
 
 /* V4: Error-Styling */
 .error-message {
