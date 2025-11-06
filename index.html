@@ -5,15 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BeaconBay Analyzer</title>
     
-    <!-- V1: CSS wird aus einer externen Datei geladen -->
+    <!-- V1: CSS -->
     <link rel="stylesheet" href="style.css">
     
-    <!--
-      V1: JS wird als Modul geladen. Das 'defer'-Attribut sorgt dafür,
-      dass das Skript erst nach dem Parsen des HTML ausgeführt wird,
-      aber noch vor 'DOMContentLoaded'. Unser 'DOMContentLoaded'-Listener
-      im JS-Code stellt sicher, dass wir trotzdem auf das DOM warten.
-    -->
+    <!-- V1: JS (als Modul) -->
     <script type="module" src="app.js" defer></script>
 </head>
 <body>
@@ -26,11 +21,25 @@
         <label for="jsonUpload" class="upload-label">JSON-Logdatei auswählen</label>
         <input type="file" id="jsonUpload" accept=".json">
 
-        <!-- V1: Rohdaten-Ausgabebereich -->
-        <h2>Rohdaten-Vorschau:</h2>
-        <pre id="output">Hier erscheinen die geladenen JSON-Rohdaten...</pre>
+        <!--
+          V3-ÄNDERUNG: Wir fügen einen dedizierten Bereich für die Analyseergebnisse hinzu.
+          Dies ist der Ort, an dem wir unsere "Schatzkarte" (Mapping) und
+          andere Erkenntnisse anzeigen werden.
+        -->
+        <h2>Analyse-Ergebnisse:</h2>
+        <div id="analysis-results">
+            <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
+        </div>
 
-        <!-- V1: Link zurück zu BeaconBay -->
+        <!--
+          V3-ÄNDERUNG: Das <pre>-Element ist jetzt nur noch für Debugging-Zwecke
+          gedacht, falls wir die Rohdaten doch einmal sehen müssen.
+          Standardmäßig wird es nicht mehr mit dem vollen JSON gefüllt.
+        -->
+        <h2>Rohdaten-Vorschau (Debug):</h2>
+        <pre id="output">Hier erscheinen Statusmeldungen und ggf. Rohdaten...</pre>
+
+        <!-- V1: Footer -->
         <footer>
             <a href="https://nullkommaneun.github.io/BeaconBay/" target="_blank" rel="noopener noreferrer">Zurück zu BeaconBay</a>
         </footer>
@@ -40,4 +49,3 @@
 </html>
 
 
- 
