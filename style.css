@@ -1,22 +1,25 @@
 /* * BeaconBay Analysator CSS
- * Version: V11 (Karten-Upload Korrelation)
+ * Version: V12 (mit Paginierung)
  */
 
-/* V1: Basis-Theme */
+/* V1: Basis-Theme und Farbvariablen */
 :root {
-    --bg-color: #1a1b26;
-    --fg-color: #a9b1d6;
-    --card-color: #24283b;
-    --border-color: #414868;
-    --accent-color: #7aa2f7;
-    --accent-hover: #9ece6a; /* Grün für "Erfolg" */
-    --danger-color: #f7768e; /* Rot für "Gefahr" */
+    --bg-color: #1a1b26; /* Dunkler Hintergrund */
+    --fg-color: #a9b1d6; /* Heller Text */
+    --card-color: #24283b; /* Hintergrund für Container/Karten */
+    --border-color: #414868; /* Ränder */
+    --accent-color: #7aa2f7; /* Blau (Primär-Aktion) */
+    --accent-hover: #9ece6a; /* Grün (Erfolg, Hover) */
+    --danger-color: #f7768e; /* Rot (Gefahr, Löschen) */
+    
     --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: 'Consolas', 'Menlo', 'Courier New', monospace;
+
+    /* V7: SVG Graph-Farben */
     --svg-stroke: #7aa2f7;
     --svg-text: #a9b1d6;
     
-    /* V8: Farbpalette für den Graphen */
+    /* V9: Farbpalette für globalen Graphen */
     --color-1: #f7768e; /* Rot */
     --color-2: #9ece6a; /* Grün */
     --color-3: #7aa2f7; /* Blau */
@@ -24,12 +27,12 @@
     --color-5: #ff9e64; /* Orange */
     --color-6: #7dcfff; /* Cyan */
     --color-7: #e0af68; /* Ocker */
-    --color-8: #c0caf5; /* Hellblau/Weiß */
+    --color-8: #c0caf5; /* Heller Text (alternativ) */
     --color-9: #f7cbf7; /* Pink */
-    --color-10: #a9b1d6; /* Grau */
+    --color-10: #a9b1d6; /* Standard Text (Fallback) */
 }
 
-/* V1: Globales Styling */
+/* V1: Globales Reset und Body-Styling */
 * {
     margin: 0;
     padding: 0;
@@ -44,6 +47,7 @@ body {
     padding: 20px;
 }
 
+/* V1: Haupt-Container */
 .container {
     max-width: 1000px;
     margin: 0 auto;
@@ -59,7 +63,7 @@ h1, h2 {
     padding-bottom: 5px;
 }
 h1 {
-    color: var(--accent-hover);
+    color: var(--accent-hover); /* Grün */
     border-bottom: 2px solid var(--border-color);
 }
 h2 {
@@ -67,10 +71,12 @@ h2 {
     border-bottom: 1px dashed var(--border-color);
 }
 
-/* V1: Upload-Button */
+/* V1: Datei-Upload-Button (versteckt das Original) */
 input[type="file"] {
-    display: none; /* Verstecken das Standard-Input-Feld */
+    display: none;
 }
+
+/* V1: Styling für das <label>, das wie ein Button aussieht */
 .upload-label {
     display: inline-block;
     padding: 12px 20px;
@@ -81,13 +87,25 @@ input[type="file"] {
     cursor: pointer;
     transition: background-color 0.3s ease;
     margin-bottom: 10px;
-    text-align: center;
 }
 .upload-label:hover {
     background-color: var(--accent-hover);
 }
 
-/* V5/V6: Action-Buttons */
+/* V11: Sekundärer (kleinerer) Upload-Button für die Karte */
+.upload-label.secondary {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    background-color: var(--border-color);
+    color: var(--fg-color);
+}
+.upload-label.secondary:hover {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+}
+
+
+/* V5/V6: Action-Buttons (Speichern, Löschen) */
 .action-button {
     display: block;
     width: 100%;
@@ -95,7 +113,7 @@ input[type="file"] {
     font-size: 1rem;
     font-weight: bold;
     color: var(--bg-color);
-    background-color: var(--accent-hover);
+    background-color: var(--accent-hover); /* Grün */
     border: none;
     border-radius: 5px;
     cursor: pointer;
@@ -105,7 +123,7 @@ input[type="file"] {
 .action-button:hover {
     background-color: #b9f27c; /* Helleres Grün */
 }
-
+/* V6: Roter "Gefahr"-Button */
 .action-button.danger {
     background-color: var(--danger-color);
 }
@@ -114,13 +132,13 @@ input[type="file"] {
 }
 
 
-/* V9: Zeitstrahl-Analyse */
+/* V9: Zeitstrahl-Analyse Container (<details>) */
 .v9-container {
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 15px;
-    margin-bottom: 20px;
+    margin: 20px 0;
 }
 .v9-container summary {
     font-weight: bold;
@@ -137,12 +155,11 @@ input[type="file"] {
     font-size: 0.9rem;
 }
 
-/* V9: Intelligenter Filter */
-/* V9.1 Fix: Styling für ID statt Klasse */
+/* V9: Intelligenter Filter (Top N) */
 #v9-controls-simple {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 10px; /* Abstand zwischen Label und Input */
     margin-bottom: 20px;
     background-color: var(--card-color);
     padding: 15px;
@@ -166,16 +183,16 @@ input[type="file"] {
     border-color: var(--accent-color);
 }
 
-/* V9: Graph-Container */
+/* V9: Globaler Graph-Container */
 #v9-graph-container {
     margin-top: 20px;
-    overflow-x: auto;
+    overflow-x: auto; /* Erlaubt horizontales Scrollen bei Bedarf */
 }
 .timeline-graph {
     width: 100%;
-    min-width: 600px; /* Stellt sicher, dass der Graph nicht zu klein wird */
+    min-width: 600px; /* Stellt sicher, dass der Graph nicht gequetscht wird */
     height: auto;
-    background-color: #16161e; /* Etwas dunkler für Kontrast */
+    background-color: #16161e; /* Leicht anderer Hintergrund für Kontrast */
     border-radius: 5px;
     border: 1px solid var(--border-color);
 }
@@ -192,10 +209,10 @@ input[type="file"] {
 .timeline-graph .timeline-axis {
     stroke: var(--border-color);
     stroke-width: 1;
-    stroke-dasharray: 2 2;
+    stroke-dasharray: 2 2; /* Gestrichelte Hilfslinien */
 }
 .timeline-graph .timeline-axis.solid {
-    stroke-dasharray: none;
+    stroke-dasharray: none; /* Solide Achsenlinien (X und Y) */
     stroke: var(--fg-color);
 }
 
@@ -203,17 +220,16 @@ input[type="file"] {
 .v9-export-controls {
     display: none; /* Standardmäßig versteckt */
     flex-direction: row; /* Nebeneinander */
-    flex-wrap: wrap; /* Auf Mobilgeräten umbrechen */
     gap: 10px;
     margin-top: 20px;
     border-top: 1px dashed var(--border-color);
     padding-top: 20px;
 }
 .v9-export-controls.visible {
-    display: flex; /* Wird von JS auf 'flex' gesetzt */
+    display: flex; /* Wird von JS auf 'flex' gesetzt, um sichtbar zu werden */
 }
 .export-button {
-    flex: 1 1 200px; /* Flex-grow, flex-shrink, flex-basis */
+    flex-grow: 1; /* Beide Buttons teilen sich den Platz */
     padding: 10px 15px;
     font-size: 0.9rem;
     font-weight: bold;
@@ -227,7 +243,7 @@ input[type="file"] {
     transition: background-color 0.3s ease;
 }
 .export-button.json {
-    background-color: var(--color-5); /* Orange */
+    background-color: var(--color-5); /* Orange für Daten */
 }
 .export-button:hover {
     background-color: var(--accent-hover);
@@ -236,42 +252,22 @@ input[type="file"] {
     background-color: #ffb78b; /* Helleres Orange */
 }
 
-/* V11: Karten-Upload Sektion */
-.v11-divider {
-    border: none;
-    border-top: 1px dashed var(--border-color);
-    margin-top: 25px;
-    margin-bottom: 20px;
-}
-.map-upload-label {
-    background-color: var(--color-7); /* Ocker-Farbe */
-}
-.map-upload-label:hover {
-    background-color: #f0c690;
-}
-#v11-map-container {
+/* V11: Karten-Upload-Container */
+.v11-map-uploader {
     margin-top: 20px;
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px;
-    min-height: 150px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.v11-map-placeholder {
-    font-style: italic;
-    color: var(--border-color);
+    padding-top: 20px;
+    border-top: 1px dashed var(--border-color);
 }
 #v11-map-container img {
     max-width: 100%;
     height: auto;
     border-radius: 5px;
+    border: 2px solid var(--border-color);
+    margin-top: 10px;
 }
 
 
-/* V3: Status-Output */
+/* V3: Status-Output <pre> */
 #output {
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
@@ -279,26 +275,73 @@ input[type="file"] {
     padding: 15px;
     min-height: 100px;
     max-height: 300px;
-    overflow: auto;
-    white-space: pre-wrap;
+    overflow: auto; /* Scrollbalken bei Bedarf */
+    white-space: pre-wrap; /* Zeilenumbruch */
     word-break: break-all;
     font-family: var(--font-mono);
     font-size: 0.9rem;
-    color: #c0caf5; /* Hellere Schrift für Log */
+    color: #c0caf5; /* Helleres Text-Blau */
 }
 
-/* V7: Analyse-Header */
+/* V7: Analyse-Header (Text über den Karten) */
 #analysis-header p {
     margin-bottom: 10px;
     font-style: italic;
     color: var(--fg-color);
 }
-#analysis-header p strong {
-    color: var(--accent-hover);
-    font-weight: 600;
+
+/* * V12: Paginierungs-Steuerung (NEU)
+ */
+#pagination-controls,
+#pagination-controls-bottom {
+    display: flex;
+    flex-wrap: wrap; /* Wichtig für mobile Ansicht */
+    justify-content: center;
+    align-items: center;
+    padding: 10px 0;
+    margin-bottom: 20px;
+    gap: 5px; /* Abstand zwischen den Buttons */
+}
+.pagination-summary {
+    font-size: 0.9rem;
+    font-style: italic;
+    margin: 5px 10px;
+    flex-basis: 100%; /* Auf Mobilgeräten volle Breite */
+    text-align: center;
+}
+.page-btn {
+    padding: 8px 12px;
+    margin: 0 2px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--fg-color);
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.2s ease;
+}
+.page-btn:hover {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+}
+.page-btn.current {
+    background-color: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+}
+.page-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--card-color);
+}
+/* Zeige Paginierung nur, wenn sie auch gerendert wurde */
+#pagination-controls:empty,
+#pagination-controls-bottom:empty {
+    display: none;
 }
 
-/* V5: Card-Layout (ersetzt <table>) */
+
+/* V5: Card-Layout (ersetzt V4-Tabelle) */
 #analysis-results {
     padding: 0;
 }
@@ -313,24 +356,24 @@ input[type="file"] {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     margin-bottom: 15px;
-    overflow: hidden; /* Für saubere Ecken */
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    overflow: hidden; /* Für abgerundete Ecken im Detailbereich */
+    transition: box-shadow 0.3s ease;
 }
+/* V7: Hervorhebung für aktive (aufgeklappte) Karte */
 .device-card.details-active {
     border-color: var(--accent-color);
     box-shadow: 0 0 10px var(--accent-color);
 }
-
-/* V7: Klickbarer Bereich */
+/* V7: Klickbarer Bereich der Karte */
 .card-clickable-area {
     cursor: pointer;
-    outline: none; /* Für Barrierefreiheit */
+    outline: none;
 }
+/* V7: Hover-Effekt (außer im Mapping-Bereich) */
 .card-clickable-area:hover .card-row {
-    background-color: #2a2e42; /* Leichter Hover-Effekt */
+    background-color: #2a2e42; /* Leicht hellerer Hover */
 }
 
-/* V5: Responsives Karten-Zeilen-Layout */
 .card-row {
     display: flex;
     flex-wrap: wrap; /* Wichtig für Mobile */
@@ -351,7 +394,7 @@ input[type="file"] {
     margin-right: 10px;
 }
 .card-value {
-    flex-basis: 60%; /* Nimmt den Rest des Platzes */
+    flex-basis: 60%; /* Wert-Bereich füllt den Rest */
     flex-grow: 1;
     word-break: break-all; /* Lange IDs umbrechen */
 }
@@ -362,19 +405,18 @@ input[type="file"] {
 }
 .card-value.name {
     font-weight: bold;
-    color: #c0caf5;
+    color: #c0caf5; /* Helleres Text-Blau */
 }
 .card-value.rssi-max {
     font-weight: bold;
-    color: var(--accent-hover);
+    color: var(--accent-hover); /* Max RSSI in Grün */
 }
-
-/* V6: Styling für gemappte Namen */
+/* V6: Styling für gemappten Namen */
 .card-value.name.is-mapped {
-    color: var(--accent-hover);
+    color: var(--accent-hover); /* Grün */
 }
 .card-value.name.is-mapped::before {
-    content: '✔ ';
+    content: '✔ '; /* Haken-Symbol */
     color: var(--accent-hover);
     font-weight: bold;
     margin-right: 4px;
@@ -382,12 +424,12 @@ input[type="file"] {
 
 /* V5: Mapping-Input-Styling */
 .mapping-row {
-    background-color: var(--card-color);
+    background-color: var(--card-color); /* Hebt den Mapping-Bereich leicht ab */
     border-top: 1px solid var(--border-color);
 }
 .mapping-row .card-label {
-    color: var(--accent-hover);
-    padding-top: 5px; /* Vertikal zentrieren zum Input-Feld */
+    color: var(--accent-hover); /* "Mapping" in Grün */
+    padding-top: 5px; /* Vertikales Alignment */
 }
 .mapping-input {
     flex-basis: 60%;
@@ -407,15 +449,15 @@ input[type="file"] {
 }
 
 
-/* V7: Styling für Detail-Bereich */
+/* V7: Styling für Detail-Bereich (aufklappbar) */
 .card-details {
     display: none; /* Standardmäßig versteckt */
     padding: 15px;
-    background-color: #16161e; /* Dunklerer Hintergrund für Details */
+    background-color: #16161e; /* Sehr dunkler Hintergrund für Details */
     border-top: 1px solid var(--border-color);
 }
 .card-details.active {
-    display: block;
+    display: block; /* Wird bei Klick sichtbar */
 }
 .card-details h4 {
     color: var(--accent-color);
@@ -432,11 +474,9 @@ input[type="file"] {
     word-break: break-all;
     border: 1px solid var(--border-color);
     margin-bottom: 15px;
-    max-height: 200px;
-    overflow-y: auto;
 }
 
-/* V7: Styling für SVG-Sparkline-Graph */
+/* V7: Styling für SVG-Sparkline-Graph (Mini-Graph) */
 .rssi-sparkline {
     width: 100%;
     height: auto;
@@ -458,8 +498,9 @@ input[type="file"] {
 .rssi-sparkline .spark-axis {
     stroke: var(--border-color);
     stroke-width: 1;
-    stroke-dasharray: 2 2;
+    stroke-dasharray: 2 2; /* Gestrichelte Linien */
 }
+
 
 /* V4: Error-Styling */
 .error-message {
@@ -482,4 +523,4 @@ footer a {
 }
 footer a:hover {
     color: var(--accent-hover);
-                     } 
+    } 
