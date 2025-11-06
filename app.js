@@ -1,5 +1,19 @@
-// V10: Export-Funktion für V9-Graphen (JSON & SVG)
-// Enthält V9.3 Bugfix für den Graphen (ReferenceError)
+/*
+ * BeaconBay Analysator JS
+ * Version: V11 (Karten-Upload Korrelation)
+ *
+ * Logik:
+ * 1. Lädt JSON (V1-V2).
+ * 2. Parst JSON und validiert Struktur (V4).
+ * 3. Berechnet Statistiken für alle Geräte (V4) und sortiert nach "Redseligkeit" (V6).
+ * 4. Zeigt Geräte als responsive Karten an (V5).
+ * 5. Lädt/Speichert/Löscht Mappings in localStorage (V5-V6).
+ * 6. Zeigt gemappte Namen grün an (V6).
+ * 7. Karten sind klickbar, um Details (Adverts, Mini-Graph) "lazy" zu laden (V7).
+ * 8. "Intelligenter Filter" (V9) generiert globalen Zeitstrahl-Graphen für "Top N"-Geräte.
+ * 9. Exportiert Graph-Daten als JSON und SVG (V10).
+ * 10. Lädt ein Karten-Bild zur direkten Korrelation hoch (V11).
+ */
 
 // V5: Globaler State
 let currentLogData = null;
@@ -14,7 +28,7 @@ let activeDownloadLinks = [];
 // V5: localStorage-Key
 const MAPPING_STORAGE_KEY = 'beaconbay-mapping';
 
-// V8/V9: Farbpalette
+// V8/V9: Farbpalette für den globalen Graphen
 const V9_GRAPH_COLORS = [
     'var(--color-1)', 'var(--color-2)', 'var(--color-3)', 
     'var(--color-4)', 'var(--color-5)', 'var(--color-6)',
@@ -25,7 +39,7 @@ const V9_GRAPH_COLORS = [
 // --- V5/V6 Mapping-Funktionen (Unverändert von V9.3) ---
 
 /**
- * V5: Lädt das gespeicherte ID->Name Mapping aus dem localStorage.
+ * V5: Lädt das ID->Name Mapping aus dem localStorage.
  * @returns {object} Das Mapping-Objekt.
  */
 function loadMapping() {
@@ -36,24 +50,21 @@ function loadMapping() {
         }
     } catch (error) {
         console.error("Fehler beim Parsen des Mappings aus localStorage:", error);
-        // Bei Korruption, localStorage-Eintrag entfernen
         localStorage.removeItem(MAPPING_STORAGE_KEY);
     }
     return {};
 }
 
 /**
- * V5: Speichert das aktuelle Mapping aus den Input-Feldern im localStorage.
- * @param {HTMLElement} resultsContainer - Das <div>, das die Karten enthält.
- * @param {HTMLElement} outputElement - Das <pre>-Log-Element.
- * @param {HTMLElement} headerElement - Das <div> für die Kopfzeile.
+ * V5/V6: Speichert das aktuelle Mapping aus den Input-Feldern in den localStorage.
+ * Ruft anschließend 'analyzeAndDisplay' neu auf, um die Ansicht zu aktualisieren.
  */
 function saveMapping(resultsContainer, outputElement, headerElement) {
     const newMapping = {};
     const inputs = resultsContainer.querySelectorAll('.mapping-input');
     let savedCount = 0;
     
-    // Iteriere über alle sichtbaren Input-Felder und sammle Mappings
+    // 1. Alle aktuellen Eingaben sammeln
     for (const input of inputs) {
         const beaconId = input.dataset.beaconId;
         const mappedName = input.value.trim();
@@ -63,21 +74,22 @@ function saveMapping(resultsContainer, outputElement, headerElement) {
         }
     }
 
+    // 2. Im localStorage speichern
     try {
         localStorage.setItem(MAPPING_STORAGE_KEY, JSON.stringify(newMapping));
         const logMsg = `[${new Date().toLocaleTimeString()}] Mapping erfolgreich gespeichert. ${savedCount} Einträge gesichert.`;
         outputElement.textContent += `\n${logMsg}`;
         outputElement.scrollTop = outputElement.scrollHeight;
 
-        // V6: UI neurendern, um gespeicherte Namen sofort anzuzeigen
-        if (currentLogData && currentLogData.devices) {
-             // V7: Finde die aktuell geöffnete Karte, damit sie offen bleibt
+        // 3. UI neu rendern, um gemappte Namen (grün) sofort anzuzeigen (V6)
+        // V9.1 Fix: v9ControlsElement muss aus dem DOM geholt werden.
+        const v9ControlsElement = document.getElementById('v9-controls-simple'); 
+        if (currentLogData && currentLogData.devices && v9ControlsElement) {
+             // V7: Merken, welche Karte offen war
              const activeCard = resultsContainer.querySelector('.device-card.details-active');
              const activeId = activeCard ? activeCard.dataset.deviceId : null;
              
-             const v9ControlsElement = document.getElementById('v9-controls-simple'); 
-             
-             // Rufe die Analysefunktion erneut auf, um die UI zu aktualisieren
+             // Neu rendern
              analyzeAndDisplay(currentLogData.devices, resultsContainer, headerElement, v9ControlsElement, activeId);
         }
     } catch (error) {
@@ -87,21 +99,15 @@ function saveMapping(resultsContainer, outputElement, headerElement) {
 }
 
 /**
- * V6: Löscht das Mapping aus dem localStorage und lädt die UI neu.
- * @param {HTMLElement} resultsContainer - Das <div>, das die Karten enthält.
- * @param {HTMLElement} outputElement - Das <pre>-Log-Element.
- * @param {HTMLElement} headerElement - Das <div> für die Kopfzeile.
- * @param {HTMLElement} v9ControlsElement - Das V9-Control-<div>.
- * @param {HTMLElement} v9GraphContainer - Das V9-Graph-<div>.
- * @param {HTMLElement} v9ExportContainer - V10: Das V10-Export-<div>.
+ * V6: Löscht das Mapping aus dem localStorage und rendert die UI neu.
  */
-function clearMapping(resultsContainer, outputElement, headerElement, v9ControlsElement, v9GraphContainer, v9ExportContainer) {
+function clearMapping(resultsContainer, outputElement, headerElement, v9ControlsElement, v9GraphContainer, v9ExportContainer, v11MapContainer) {
     try {
         localStorage.removeItem(MAPPING_STORAGE_KEY);
         const logMsg = `[${new Date().toLocaleTimeString()}] Mapping gelöscht.`;
         outputElement.textContent += `\n${logMsg}`;
 
-        // Lade UI neu, um gelöschte Mappings anzuzeigen
+        // 1. Karten-UI neu rendern (jetzt ohne grüne Namen)
         if (currentLogData && currentLogData.devices) {
             analyzeAndDisplay(currentLogData.devices, resultsContainer, headerElement, v9ControlsElement, null);
         } else {
@@ -109,7 +115,7 @@ function clearMapping(resultsContainer, outputElement, headerElement, v9Controls
             headerElement.innerHTML = '';
         }
         
-        // V9/V10: Setze V9/V10-UI zurück
+        // 2. V9-UI zurücksetzen (V9.1 Fix: v9ControlsElement ist jetzt das Ziel)
         if (v9ControlsElement) {
             v9ControlsElement.innerHTML = `
                 <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
@@ -117,13 +123,10 @@ function clearMapping(resultsContainer, outputElement, headerElement, v9Controls
             `;
         }
         if (v9GraphContainer) v9GraphContainer.innerHTML = '';
-        if (v9ExportContainer) v9ExportContainer.classList.remove('visible'); // V10
         
-        // V10: Globale Export-Variablen zurücksetzen
-        currentGraphSVG = null;
-        currentGraphData = null;
-        for (const link of activeDownloadLinks) { URL.revokeObjectURL(link.href); }
-        activeDownloadLinks = [];
+        // 3. V10/V11-UI zurücksetzen
+        if (v9ExportContainer) v9ExportContainer.classList.remove('visible');
+        if (v11MapContainer) v11MapContainer.innerHTML = '<p class="v11-map-placeholder">Hier erscheint dein Grundriss oder Screenshot...</p>';
 
     } catch (error)
     {
@@ -132,19 +135,20 @@ function clearMapping(resultsContainer, outputElement, headerElement, v9Controls
     }
 }
 
+
 // --- V7: Detail-Funktionen (Sparkline & Adverts) ---
 
 /**
- * V7: Formatiert die 'uniqueAdvertisements' Sektion für die Detailansicht.
- * @param {Array<object>} adverts - Das Array der Advertisement-Objekte.
- * @returns {string} HTML-String.
+ * V7: Formatiert die 'uniqueAdvertisements' als JSON-String.
+ * @param {Array} adverts - Das uniqueAdvertisements-Array des Geräts.
+ * @returns {string} Ein HTML-String mit einem <pre>-Block.
  */
 function formatAdvertisements(adverts) {
     if (!adverts || adverts.length === 0) {
         return '<pre class="advert-list">Keine Advertisement-Daten verfügbar.</pre>';
     }
     try {
-        // Formatiere das JSON schön
+        // V7: JSON.stringify zur sauberen Formatierung der Objekte im Array
         const formatted = JSON.stringify(adverts, null, 2);
         return `<pre class="advert-list">${escapeHTML(formatted)}</pre>`;
     } catch (e) {
@@ -154,21 +158,21 @@ function formatAdvertisements(adverts) {
 
 /**
  * V7: Generiert einen reinen SVG-Sparkline-Graphen für den RSSI-Verlauf.
- * @param {Array<object>} rssiHistory - Das 'rssiHistory'-Array eines Geräts.
- * @returns {string} HTML-String des SVG-Elements.
+ * @param {Array} rssiHistory - Das rssiHistory-Array des Geräts.
+ * @returns {string} Ein HTML-String, der das SVG enthält.
  */
 function generateSparkline(rssiHistory) {
     if (!rssiHistory || rssiHistory.length < 2) {
         return `<p>Nicht genügend Daten für RSSI-Graph (min. 2 Punkte benötigt).</p>`;
     }
 
-    // SVG-Dimensionen
+    // 1. Definitionen
     const width = 300, height = 100, padding = 20;
-    const viewWidth = width + padding * 2, viewHeight = height + padding * 2;
+    const viewWidth = width + padding * 2;
+    const viewHeight = height + padding * 2;
 
-    // Finde Daten-Grenzen (Zeit und RSSI)
+    // 2. Daten parsen und Grenzen finden
     let minRssi = -40, maxRssi = -100, minTime = Infinity, maxTime = -Infinity;
-    
     const dataPoints = rssiHistory.map(event => {
         const time = new Date(event.t).getTime();
         const rssi = event.r;
@@ -179,69 +183,73 @@ function generateSparkline(rssiHistory) {
         return { time, rssi };
     });
 
-    // Skalierungs-Puffer hinzufügen
-    minRssi = Math.min(-35, minRssi + 5); 
-    maxRssi = Math.max(-105, maxRssi - 5);
+    // 3. Y-Achse "aufräumen" (damit Graphen vergleichbar bleiben)
+    minRssi = Math.min(-35, minRssi + 5); // Puffer nach oben
+    maxRssi = Math.max(-105, maxRssi - 5); // Puffer nach unten
 
-    // Skalierungsfunktionen (mappen Datenpunkte auf SVG-Koordinaten)
-    const timeRange = (maxTime - minTime) || 1; 
+    // 4. Skalierungsfunktionen (Zeit -> X, RSSI -> Y)
+    const timeRange = (maxTime - minTime) || 1; // Division durch Null verhindern
     const rssiRange = (maxRssi - minRssi) || 1;
     
-    // X-Achse (Zeit)
+    // (0,0) ist links oben. Zeit (X) wächst nach rechts.
     const scaleX = (time) => padding + ((time - minTime) / timeRange) * width;
-    // Y-Achse (RSSI) - (0,0) ist links oben, daher Invertierung
+    // RSSI (Y) ist "invertiert": höheres RSSI (-40) ist oben, niedrigeres (-100) ist unten.
     const scaleY = (rssi) => padding + ((maxRssi - rssi) / rssiRange) * height;
 
-    // SVG-Pfad-Daten generieren
+    // 5. SVG-Pfad-Daten generieren (z.B. "M 0 0 L 10 50 L 20 30...")
     let pathData = "M" + scaleX(dataPoints[0].time) + " " + scaleY(dataPoints[0].rssi);
     for (let i = 1; i < dataPoints.length; i++) {
         pathData += ` L${scaleX(dataPoints[i].time)} ${scaleY(dataPoints[i].rssi)}`;
     }
 
-    // Zeit-Labels formatieren
+    // 6. Achsenbeschriftungen
     const startTime = new Date(minTime).toLocaleTimeString();
     const endTime = new Date(maxTime).toLocaleTimeString();
 
-    // SVG-String zusammenbauen
+    // 7. SVG-String zusammenbauen
     return `
         <svg class="rssi-sparkline" viewBox="0 0 ${viewWidth} ${viewHeight}" preserveAspectRatio="xMidYMid meet">
-            <!-- Achsen-Beschriftungen (Y) -->
+            <!-- Y-Achse (RSSI) -->
             <text class="spark-text" x="5" y="${padding + 5}" alignment-baseline="hanging">${minRssi} dBm</text>
             <text class="spark-text" x="5" y="${padding + height}" alignment-baseline="baseline">${maxRssi} dBm</text>
             <line class="spark-axis" x1="${padding}" y1="${padding}" x2="${padding}" y2="${padding + height}" />
             
-            <!-- Achsen-Beschriftungen (X) -->
+            <!-- X-Achse (Zeit) -->
             <text class="spark-text" x="${padding}" y="${viewHeight - 5}" text-anchor="start">${startTime}</text>
             <text class="spark-text" x="${padding + width}" y="${viewHeight - 5}" text-anchor="end">${endTime}</text>
             <line class="spark-axis" x1="${padding}" y1="${padding + height}" x2="${padding + width}" y2="${padding + height}" />
-            
-            <!-- Der Graph-Pfad -->
+
+            <!-- Daten-Linie -->
             <path class="spark-line" d="${pathData}" />
         </svg>
     `;
 }
 
-// --- V9.3: Globale Graph-Funktion (BUGFIX) ---
+// --- V9.3: Globale Graph-Funktion ---
+
 /**
- * V9.3: Generiert den globalen Zeitstrahl-Graphen (mit V9.3 Bugfix für Scoping).
- * @param {Array<object>} devicesToGraph - Array der zu zeichnenden Geräte.
- * @param {object} globalScanInfo - Das 'scanInfo'-Objekt aus dem Log.
- * @returns {string} HTML-String des SVG-Elements.
+ * V9.3: Generiert den globalen Zeitstrahl-Graphen für die "Top N" Geräte.
+ * @param {Array} devicesToGraph - Array von Objekten {id, name, color, history}
+ * @param {object} globalScanInfo - Das `scanInfo`-Objekt aus der JSON-Datei.
+ * @returns {string} Ein HTML-String, der das SVG enthält.
  */
 function generateTimelineGraph(devicesToGraph, globalScanInfo) {
     if (!devicesToGraph || devicesToGraph.length === 0) {
         return `<p class="error-message">Keine Geräte zum Zeichnen ausgewählt.</p>`;
     }
 
+    // 1. Definitionen
     const width = 800, height = 400, padding = 50, legendWidth = 200;
     const viewWidth = width + padding * 2 + legendWidth;
     const viewHeight = height + padding * 2;
 
-    // Finde globale Grenzen (Zeit von scanInfo, RSSI von Geräten)
+    // 2. Globale Grenzen finden
     let globalMinRssi = -40, globalMaxRssi = -100;
+    // V9: Globale X-Achse wird durch die Scan-Info bestimmt
     const globalMinTime = new Date(globalScanInfo.scanStarted).getTime();
     const globalMaxTime = new Date(globalScanInfo.scanEnded).getTime();
-    
+
+    // Finde min/max RSSI über *alle* ausgewählten Geräte
     for (const device of devicesToGraph) {
         for (const event of device.history) {
             const rssi = event.r;
@@ -250,38 +258,39 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
         }
     }
     
+    // Y-Achse "aufräumen" (Puffer)
     globalMinRssi = Math.min(-30, globalMinRssi + 10);
     globalMaxRssi = Math.max(-110, globalMaxRssi - 10);
 
+    // 3. Skalierungsfunktionen
     const timeRange = (globalMaxTime - globalMinTime) || 1;
     const rssiRange = (globalMaxRssi - globalMinRssi) || 1;
 
-    // V9.3-KORREKTUR: Verwende 'globalMinTime' statt 'minTime'
+    // V9.3 BUGFIX: Verwende die 'global'-Variablen
     const scaleX = (time) => padding + ((time - globalMinTime) / timeRange) * width;
-    
-    // V9.3-KORREKTUR: Verwende 'globalMaxRssi' statt 'maxRssi' und 'globalMinRssi'
     const scaleY = (rssi) => padding + ((globalMaxRssi - rssi) / rssiRange) * height;
 
+    // 4. Pfade und Legende generieren
     let paths = '';
     let legend = '<g class="timeline-legend">';
     
     devicesToGraph.forEach((device, index) => {
         const { name, color, history } = device;
-        if (history.length < 2) return; // Brauchen min. 2 Punkte
+        if (history.length < 2) return; // Kann keine Linie zeichnen
 
-        // Sortiere Historie nach Zeit, um den Pfad korrekt zu zeichnen
+        // V9: Datenpunkte müssen sortiert sein, falls sie es nicht sind
         const sortedHistory = history.map(e => ({ time: new Date(e.t).getTime(), rssi: e.r }))
                                      .sort((a, b) => a.time - b.time);
 
-        // V9.3-HINWEIS: Diese Aufrufe funktionieren jetzt
         let pathData = "M" + scaleX(sortedHistory[0].time) + " " + scaleY(sortedHistory[0].rssi);
         for (let i = 1; i < sortedHistory.length; i++) {
             pathData += ` L${scaleX(sortedHistory[i].time)} ${scaleY(sortedHistory[i].rssi)}`;
         }
-
-        paths += `<path d="${pathData}" stroke="${color}" class="timeline-line" />`;
         
-        // Legende
+        // Füge den Pfad hinzu
+        paths += `<path d="${pathData}" stroke="${color}" class="timeline-line" />`;
+
+        // Füge die Legende hinzu
         const shortName = (name.length > 20) ? name.substring(0, 18) + '...' : name;
         const legendY = padding + index * 20;
         legend += `<rect x="${width + padding + 15}" y="${legendY}" width="15" height="10" fill="${color}" />`;
@@ -289,25 +298,28 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
     });
     legend += '</g>';
 
-    // Achsen
+    // 5. Achsenbeschriftungen
     const startTime = new Date(globalMinTime).toLocaleTimeString();
     const endTime = new Date(globalMaxTime).toLocaleTimeString();
     let axes = `
-        <!-- Y-Achse -->
+        <!-- Y-Achse (RSSI) -->
         <text class="timeline-text" x="${padding - 10}" y="${padding + 5}" text-anchor="end">${globalMinRssi} dBm</text>
         <text class="timeline-text" x="${padding - 10}" y="${padding + height}" text-anchor="end">${globalMaxRssi} dBm</text>
         <line class="timeline-axis solid" x1="${padding}" y1="${padding}" x2="${padding}" y2="${padding + height}" />
+        
         <!-- Y-Hilfslinien -->
         <line class="timeline-axis" x1="${padding}" y1="${scaleY(-70)}" x2="${padding + width}" y2="${scaleY(-70)}" />
         <text class="timeline-text" x="${padding - 10}" y="${scaleY(-70) + 3}" text-anchor="end">-70</text>
         <line class="timeline-axis" x1="${padding}" y1="${scaleY(-85)}" x2="${padding + width}" y2="${scaleY(-85)}" />
         <text class="timeline-text" x="${padding - 10}" y="${scaleY(-85) + 3}" text-anchor="end">-85</text>
-        <!-- X-Achse -->
+        
+        <!-- X-Achse (Zeit) -->
         <text class="timeline-text" x="${padding}" y="${viewHeight - 15}" text-anchor="start">${startTime}</text>
         <text class="timeline-text" x="${padding + width}" y="${viewHeight - 15}" text-anchor="end">${endTime}</text>
         <line class="timeline-axis solid" x1="${padding}" y1="${padding + height}" x2="${padding + width}" y2="${padding + height}" />
     `;
 
+    // 6. SVG-String zusammenbauen
     return `
         <svg class="timeline-graph" viewBox="0 0 ${viewWidth} ${viewHeight}" preserveAspectRatio="xMidYMid meet">
             ${axes}
@@ -327,14 +339,13 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
  */
 function createDownloadLinks(exportContainer, svgContent, graphData) {
     // 0. Alte Download-Links (falls vorhanden) löschen (Regel 2)
-    // Das verhindert Speicherlecks durch 'createObjectURL'
     for (const link of activeDownloadLinks) {
-        URL.revokeObjectURL(link.href);
+        URL.revokeObjectURL(link.href); // Speicher freigeben
     }
     activeDownloadLinks = [];
     exportContainer.innerHTML = ''; // Container leeren
 
-    // --- 1. JSON-Daten (für Korrelation) vorbereiten ---
+    // 1. JSON-Daten (für Korrelation) vorbereiten
     const jsonString = JSON.stringify(graphData, null, 2);
     const jsonBlob = new Blob([jsonString], { type: 'application/json' });
     const jsonUrl = URL.createObjectURL(jsonBlob);
@@ -347,24 +358,32 @@ function createDownloadLinks(exportContainer, svgContent, graphData) {
     exportContainer.appendChild(jsonLink);
     activeDownloadLinks.push(jsonLink); // Zum Speicher-Management hinzufügen
 
-    // --- 2. SVG-Bild (für Visualisierung) vorbereiten ---
+    // 2. SVG-Bild (für Visualisierung) vorbereiten
     
-    // V10-HINWEIS: Wir müssen die CSS-Variablen in das SVG einbetten,
+    // V10-FIX (Regel 2): Wir müssen die CSS-Variablen in das SVG einbetten,
     // sonst ist die exportierte Datei schwarz!
+    // Wir holen uns die berechneten Werte der Farbvariablen.
+    const rootStyle = getComputedStyle(document.documentElement);
     const cssVariables = `
-        :root {
-            --color-1: #f7768e; --color-2: #9ece6a; --color-3: #7aa2f7;
-            --color-4: #bb9af7; --color-5: #ff9e64; --color-6: #7dcfff;
-            --color-7: #e0af68; --color-8: #c0caf5; --color-9: #f7cbf7;
-            --color-10: #a9b1d6;
-            --svg-text: #a9b1d6;
-            --border-color: #414868;
-            --fg-color: #a9b1d6;
+        .timeline-line { 
+            fill: none; 
+            stroke-width: 2; 
+            opacity: 0.8; 
         }
-        .timeline-line { fill: none; stroke-width: 2; opacity: 0.8; }
-        .timeline-text { font-family: -apple-system, sans-serif; font-size: 10px; fill: var(--svg-text); }
-        .timeline-axis { stroke: var(--border-color); stroke-width: 1; stroke-dasharray: 2 2; }
-        .timeline-axis.solid { stroke-dasharray: none; stroke: var(--fg-color); }
+        .timeline-text { 
+            font-family: -apple-system, sans-serif; 
+            font-size: 10px; 
+            fill: ${rootStyle.getPropertyValue('--svg-text').trim()}; 
+        }
+        .timeline-axis { 
+            stroke: ${rootStyle.getPropertyValue('--border-color').trim()}; 
+            stroke-width: 1; 
+            stroke-dasharray: 2 2; 
+        }
+        .timeline-axis.solid { 
+            stroke-dasharray: none; 
+            stroke: ${rootStyle.getPropertyValue('--fg-color').trim()}; 
+        }
     `;
     
     // Wir bauen das vollständige SVG-Dokument
@@ -393,38 +412,47 @@ function createDownloadLinks(exportContainer, svgContent, graphData) {
 }
 
 
-// --- V9/V10: Analyse- und UI-Funktionen ---
+// --- V4-V9: Analyse- und UI-Rendering-Funktionen ---
 
 /**
- * V9.2: Haupt-Analysefunktion (mit avgRssi-Bugfix)
- * Rendert die Karten-UI.
+ * V4/V5/V6/V7/V9: Hauptanalysefunktion.
+ * Verarbeitet die geparsten Daten, berechnet Statistiken,
+ * sortiert nach 'count' und rendert die Geräte-Karten-Liste.
+ * Füllt auch die V9-UI.
+ * @param {Array} devicesArray - Das 'devices'-Array aus der JSON.
+ * @param {HTMLElement} resultsContainer - Das <div> für die Karten.
+ * @param {HTMLElement} headerElement - Das <div> für die Zusammenfassung.
+ * @param {HTMLElement} v9ControlsElement - Das <div> für die V9-Steuerung.
+ * @param {string | null} activeCardId - Die ID der Karte, die offen bleiben soll (V7).
  */
 function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9ControlsElement, activeCardId = null) {
-    currentStats = []; // V9: Globale Statistik zurücksetzen
+    // V9: Globale Statistik-Liste zurücksetzen
+    currentStats = []; 
     
-    // V4: Daten validieren
+    // V4: Prüfen, ob Daten gültig sind
     if (!Array.isArray(devicesArray) || devicesArray.length === 0) {
         resultsContainer.innerHTML = '<p>Logdatei enthält 0 Geräte.</p>';
         headerElement.innerHTML = '';
-        v9ControlsElement.innerHTML = `
-            <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
-            <input type="number" id="v9-top-n-select" value="6" min="2" max="20" disabled />
-        `;
+        v9ControlsElement.innerHTML = `<label>Top-Geräte:</label><input type="number" value="6" disabled />`;
         return;
     }
 
+    // V5: Gespeichertes Mapping laden
     const mapping = loadMapping();
+    
     const stats = [];
-
-    // V4: Statistiken berechnen
+    
+    // V4: Statistiken für JEDES Gerät berechnen
     for (const device of devicesArray) {
         if (!device || !device.id || !Array.isArray(device.rssiHistory)) continue;
-        
+
         const rssiEvents = device.rssiHistory;
         const count = rssiEvents.length;
-        let rssiSum = 0, maxRssi = -Infinity;
         
-        // V9.2-KORREKTUR: 'avgRssi' *außerhalb* des 'if' deklarieren.
+        let rssiSum = 0;
+        let maxRssi = -Infinity;
+        
+        // V9.2 BUGFIX: avgRssi *außerhalb* des if-Blocks deklarieren
         let avgRssi = null; 
 
         if (count > 0) {
@@ -434,38 +462,44 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9Cont
                     if (event.r > maxRssi) maxRssi = event.r;
                 }
             }
-            // V9.2-KORREKTUR: 'avgRssi' hier *zuweisen*.
             avgRssi = (rssiSum / count).toFixed(2);
-        } else { 
-            maxRssi = null; 
-            // V9.2: 'avgRssi' bleibt 'null' (was korrekt ist).
+        } else {
+            maxRssi = null; // V9.2: Setze auf null, wenn count = 0
         }
         
-        // V9.2: Dieser Push funktioniert jetzt immer, da 'avgRssi' immer definiert ist.
-        stats.push({ id: device.id, name: device.name || "[Unbenannt]", count, avgRssi, maxRssi });
+        stats.push({
+            id: device.id,
+            name: device.name || "[Unbenannt]",
+            count,
+            avgRssi,
+            maxRssi
+        });
     }
 
-    // V6: Sortieren nach "Redseeligkeit" (count)
+    // V6: Sortieren nach "Redseeligkeit" (count, absteigend)
     stats.sort((a, b) => b.count - a.count);
-    
-    // V9: Globale Statistik für V9-Graphen speichern
-    currentStats = stats; 
 
-    // V7: Header aktualisieren
-    headerElement.innerHTML = `<p>Analyse von <strong>${devicesArray.length}</strong> Geräten. (Sortiert nach "Redseeligkeit". Klicken für Details.)</p>`;
+    // V9: Globale Statistik-Liste für Graphen speichern
+    currentStats = stats; 
     
-    // V7: Karten-HTML generieren
+    // V7: Header-Zusammenfassung rendern
+    headerElement.innerHTML = `<p>Analyse von <strong>${devicesArray.length}</strong> Geräten. (Sortiert nach "Redseeligkeit". Klicken für Details.)</p>`;
+
+    // V5: HTML für alle Karten generieren
     let htmlOutput = "";
     for (const device of stats) {
+        
+        // V6: Mapping-Namen holen
         const mappedName = mapping[device.id] || '';
         const displayName = mappedName ? mappedName : device.name;
         const isMappedClass = mappedName ? 'is-mapped' : '';
         
-        // V7: Logik, um geöffnete Karten offen zu halten
+        // V7: Prüfen, ob diese Karte aktiv (aufgeklappt) bleiben soll
         const isActive = (device.id === activeCardId);
         const activeClass = isActive ? 'active' : '';
         const cardActiveClass = isActive ? 'details-active' : '';
 
+        // V5/V6/V7: Karten-HTML
         htmlOutput += `
             <div class="device-card ${cardActiveClass}" data-device-id="${device.id}">
                 <!-- V7: Klickbarer Bereich -->
@@ -491,24 +525,27 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9Cont
                         <span class="card-value mono rssi-max">${device.maxRssi ?? 'N/A'} dBm</span>
                     </div>
                 </div>
-                <!-- V5: Mapping-Zeile (nicht klickbar) -->
+
+                <!-- V5: Mapping-Zeile -->
                 <div class="card-row mapping-row">
                     <label for="map-${device.id}" class="card-label">Mapping (Ort):</label>
                     <input type="text" id="map-${device.id}" class="mapping-input"
                            data-beacon-id="${device.id}" value="${escapeHTML(mappedName)}"
                            placeholder="z.B. FTS Ladestation 1">
                 </div>
-                <!-- V7: Detail-Bereich (Lazy Loading) -->
+
+                <!-- V7: Detail-Bereich (Lazy-loaded) -->
                 <div class="card-details ${activeClass}" id="details-${device.id}" data-is-loaded="${isActive}">
                     ${isActive ? loadCardDetails(device.id) : '<!-- Details werden bei Klick geladen -->'}
                 </div>
             </div>
         `;
     }
-    // V5: Karten ins DOM einfügen
+    
+    // V5: Karten-HTML in die Seite einfügen
     resultsContainer.innerHTML = htmlOutput;
     
-    // V9: V9-Control-Container-Inhalt wiederherstellen/aktivieren
+    // V9: V9-UI (Top-N-Auswahl) aktivieren
     v9ControlsElement.innerHTML = `
         <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
         <input type="number" id="v9-top-n-select" value="6" min="2" max="20" />
@@ -516,22 +553,28 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9Cont
 }
 
 /**
- * V7: Lädt den Inhalt für eine Detail-Karte (Adverts + Graph).
- * @param {string} deviceId - Die ID des zu ladenden Geräts.
- * @returns {string} HTML-String für den Detailbereich.
+ * V7: "Lazy-Loads" den Inhalt für eine Detail-Karte (Adverts & Graph).
+ * @param {string} deviceId - Die ID des Geräts.
+ * @returns {string} Der HTML-Inhalt für den .card-details-Block.
  */
 function loadCardDetails(deviceId) {
     if (!currentLogData || !currentLogData.devices) {
         return '<p class="error-message">Fehler: Log-Daten nicht gefunden.</p>';
     }
+    
+    // 1. Finde die vollen Gerätedaten
     const device = currentLogData.devices.find(d => d.id === deviceId);
     if (!device) {
         return `<p class="error-message">Fehler: Gerät mit ID ${deviceId} nicht gefunden.</p>`;
     }
-    
+
+    // 2. Generiere Advertisements-HTML
     const advertsHtml = formatAdvertisements(device.uniqueAdvertisements);
-    const graphHtml = generateSparkline(device.rssiHistory);
     
+    // 3. Generiere Sparkline-Graph-HTML
+    const graphHtml = generateSparkline(device.rssiHistory);
+
+    // 4. Kombiniere und gib zurück
     return `
         <h4>1. Unique Advertisements</h4>
         ${advertsHtml}
@@ -541,19 +584,27 @@ function loadCardDetails(deviceId) {
 }
 
 /**
- * V4/V6: HTML-Escaping-Funktion, um XSS zu verhindern.
- * @param {string} str - Der zu escapende String.
- * @returns {string} Der gesäuberte String.
+ * V4: Kleine Helferfunktion, um HTML-Injection durch Gerätenamen zu verhindern.
+ * @param {string} str - Der zu bereinigende String.
+ * @returns {string} Der bereinigte String.
  */
 function escapeHTML(str) {
     if (typeof str !== 'string') return str;
-    return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
+    return str.replace(/[&<>"']/g, function(m) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[m];
+    });
 }
 
-// --- V1-V10: Haupt-Event-Listener ---
+// --- V1-V11: Haupt-Event-Listener ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // V10: Alle UI-Elemente holen
+    // V11: Alle UI-Elemente holen
     const fileInput = document.getElementById('jsonUpload');
     const outputElement = document.getElementById('output');
     const resultsElement = document.getElementById('analysis-results');
@@ -561,43 +612,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveButton = document.getElementById('saveMappingBtn');
     const clearButton = document.getElementById('clearMappingBtn');
     
+    // V9 Elemente
     const v9Container = document.getElementById('v9-container');
     const v9ControlsElement = document.getElementById('v9-controls-simple'); 
     const v9GenerateBtn = document.getElementById('v9-generateBtn');
     const v9GraphContainer = document.getElementById('v9-graph-container');
-    const v9ExportContainer = document.getElementById('v9-export-controls'); // V10
+    
+    // V10 Elemente
+    const v9ExportContainer = document.getElementById('v9-export-controls');
+    
+    // V11 Elemente
+    const mapUploadInput = document.getElementById('mapUpload');
+    const v11MapContainer = document.getElementById('v11-map-container');
 
-    // V9.1: Robuster Check
-    if (!fileInput || !outputElement || !resultsElement || !saveButton || !clearButton || !headerElement || !v9Container || !v9ControlsElement || !v9GenerateBtn || !v9GraphContainer || !v9ExportContainer) {
+
+    // V9.1: Kritische UI-Element-Prüfung
+    if (!fileInput || !outputElement || !resultsElement || !saveButton || !clearButton || !headerElement || !v9Container || !v9ControlsElement || !v9GenerateBtn || !v9GraphContainer || !v9ExportContainer || !mapUploadInput || !v11MapContainer) {
         console.error("Kritischer Fehler: UI-Elemente wurden nicht im DOM gefunden.");
-        if(outputElement) outputElement.textContent = "UI-Initialisierungsfehler (V10). Ein oder mehrere DOM-Elemente fehlen.";
+        if(outputElement) outputElement.textContent = "UI-Initialisierungsfehler (V11). Ein HTML-Element fehlt.";
         return;
     }
     
-    // V9.2: V9-Controls beim Start deaktivieren
+    // V9: Initialisiere V9-UI als 'disabled'
     v9ControlsElement.innerHTML = `
         <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
         <input type="number" id="v9-top-n-select" value="6" min="2" max="20" disabled />
     `;
 
-    // V5: Listener für Speichern
+    // V5: Mapping-Speichern-Button
     saveButton.addEventListener('click', () => {
         saveMapping(resultsElement, outputElement, headerElement);
     });
 
-    // V6/V10: Listener für Löschen
+    // V6: Mapping-Löschen-Button
     clearButton.addEventListener('click', () => {
-        clearMapping(resultsElement, outputElement, headerElement, v9ControlsElement, v9GraphContainer, v9ExportContainer);
+        // V11: Übergibt alle UI-Container zum Zurücksetzen
+        clearMapping(resultsElement, outputElement, headerElement, v9ControlsElement, v9GraphContainer, v9ExportContainer, v11MapContainer);
     });
     
-    // V9/V10: Listener für globalen Graph-Button
+    // V9: Graph-Generieren-Button
     v9GenerateBtn.addEventListener('click', () => {
         if (!currentLogData || !currentLogData.scanInfo || currentStats.length === 0) {
-            v9GraphContainer.innerHTML = '<p class="error-message">Bitte zuerst eine Log-Datei laden (und analysieren).</p>';
+            v9GraphContainer.innerHTML = '<p class="error-message">Bitte zuerst eine Log-Datei laden.</p>';
             v9ExportContainer.classList.remove('visible'); // V10
             return;
         }
         
+        // V9.1 Fix: Holt das Element, *nachdem* es von analyzeAndDisplay erstellt wurde
         const v9TopNSelect = document.getElementById('v9-top-n-select');
         if (!v9TopNSelect) {
             v9GraphContainer.innerHTML = '<p class="error-message">Fehler: Konnte Top-N-Auswahlfeld nicht finden.</p>';
@@ -615,6 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
         outputElement.textContent += `\n[V9] Generiere globalen Graphen für die Top ${topN} Geräte...`;
         v9GraphContainer.innerHTML = '<p>Generiere Graph...</p>';
         
+        // V9: Daten für den Graphen vorbereiten
         const topNDevicesStats = currentStats.slice(0, topN);
         const mapping = loadMapping();
         const devicesToGraph = [];
@@ -634,7 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // V10: Graph generieren
+        // V9: Graph generieren (V9.3 Bugfix ist hier enthalten)
         const svg = generateTimelineGraph(devicesToGraph, currentLogData.scanInfo);
         v9GraphContainer.innerHTML = svg;
         
@@ -657,18 +719,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // V7: Event-Delegation für Klicks auf die Karten
     resultsElement.addEventListener('click', (e) => {
-        // Finde den klickbaren Bereich
+        // Nur auslösen, wenn auf den klickbaren Bereich geklickt wird
         const clickableArea = e.target.closest('.card-clickable-area');
-        if (!clickableArea) return; // Klick war außerhalb, z.B. auf Mapping-Input
+        if (!clickableArea) return; // Klick war auf Mapping-Input, ignorieren
         
         const card = clickableArea.closest('.device-card');
         if (!card) return;
-        
+
         const deviceId = card.dataset.deviceId;
         const detailsPane = card.querySelector('.card-details');
+        
         if (!deviceId || !detailsPane) return;
 
-        // V7: Lazy Loading der Details
+        // V7: "Lazy Load"
         if (detailsPane.dataset.isLoaded !== 'true') {
             outputElement.textContent += `\n[V7] Lade Details für ...${deviceId.substring(deviceId.length - 6)}`;
             detailsPane.innerHTML = loadCardDetails(deviceId);
@@ -676,84 +739,122 @@ document.addEventListener('DOMContentLoaded', () => {
             outputElement.scrollTop = outputElement.scrollHeight;
         }
         
-        // V7: Auf- und Zuklappen
+        // V7: Toggle-Logik
         detailsPane.classList.toggle('active');
         card.classList.toggle('details-active');
         clickableArea.setAttribute('aria-expanded', detailsPane.classList.contains('active'));
     });
 
-    // V1: Listener für Datei-Upload (angepasst für V10)
-    fileInput.addEventListener('change', (event) => {
+    // V11: Event-Listener für Karten-Bild-Upload
+    mapUploadInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
-        
-        // V10: UI-Reset beim Auswählen einer neuen Datei
-        outputElement.textContent = '...';
-        resultsElement.innerHTML = '<p>Bitte lade eine Logdatei...</p>';
-        headerElement.innerHTML = '';
-        v9GraphContainer.innerHTML = '';
-        v9ExportContainer.classList.remove('visible');
-        v9ControlsElement.innerHTML = `
-            <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
-            <input type="number" id="v9-top-n-select" value="6" min="2" max="20" disabled />
-        `;
-        currentLogData = null;
-        currentStats = [];
-        currentGraphSVG = null;
-        currentGraphData = null;
-        for (const link of activeDownloadLinks) { URL.revokeObjectURL(link.href); }
-        activeDownloadLinks = [];
-
         if (!file) {
-            outputElement.textContent = 'Dateiauswahl abgebrochen.';
+            v11MapContainer.innerHTML = '<p class="v11-map-placeholder">Karten-Upload abgebrochen.</p>';
             return;
         }
 
+        // Prüfen, ob es ein Bild ist (Regel 2: Proaktives Mitdenken)
+        if (!file.type.startsWith('image/')) {
+            v11MapContainer.innerHTML = `<p class="error-message">Fehler: Datei ist kein Bild (${file.type}).</p>`;
+            return;
+        }
+        
+        outputElement.textContent += `\n[V11] Lade Karten-Bild: ${file.name} ...`;
+        v11MapContainer.innerHTML = '<p>Lade Bild...</p>';
+
+        const reader = new FileReader();
+        
+        // V11: Muss readAsDataURL verwenden, nicht readAsText
+        reader.onload = (e) => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.alt = `Karten-Ansicht: ${file.name}`;
+            v11MapContainer.innerHTML = ''; // Placeholder entfernen
+            v11MapContainer.appendChild(img);
+            outputElement.textContent += `\n[V11] Karte erfolgreich geladen.`;
+            outputElement.scrollTop = outputElement.scrollHeight;
+        };
+
+        reader.onerror = (e) => {
+            console.error('Fehler beim Lesen der Bilddatei:', e);
+            const errorMsg = `Fehler: Die Bilddatei konnte nicht gelesen werden.`;
+            outputElement.textContent += `\n[V11] ${errorMsg}`;
+            v11MapContainer.innerHTML = `<p class="error-message">${errorMsg}</p>`;
+        };
+
+        reader.readAsDataURL(file);
+    });
+
+    // V1: Listener für JSON-Datei-Upload (angepasst für V11)
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        
+        // V11: Beim Laden einer *neuen* JSON, alle alten Graphen/Karten löschen
+        const resetUI = () => {
+            resultsElement.innerHTML = '<p>Bitte lade eine Logdatei...</p>';
+            headerElement.innerHTML = '';
+            v9GraphContainer.innerHTML = '';
+            v9ExportContainer.classList.remove('visible');
+            v11MapContainer.innerHTML = '<p class="v11-map-placeholder">Hier erscheint dein Grundriss oder Screenshot...</p>';
+            v9ControlsElement.innerHTML = `<label>Top-Geräte:</label><input type="number" value="6" disabled />`;
+            currentLogData = null;
+            currentStats = [];
+            currentGraphSVG = null;
+            currentGraphData = null;
+        };
+        
+        if (!file) {
+            outputElement.textContent = 'Dateiauswahl abgebrochen.';
+            resetUI();
+            return;
+        }
+
+        // Setze UI zurück, während neue Datei lädt
+        resetUI();
         outputElement.textContent = `Lese und parse Datei: ${file.name} ...`;
         resultsElement.innerHTML = `<p>Lese Datei ${file.name}...</p>`;
 
         const reader = new FileReader();
-        
         reader.onload = (e) => {
             try {
-                // V2: Parsen und Validieren
+                // V2: JSON parsen
                 currentLogData = JSON.parse(e.target.result);
+
+                // V4: Struktur validieren (jetzt mit scanInfo)
                 if (typeof currentLogData === 'object' && currentLogData !== null && Array.isArray(currentLogData.devices) && currentLogData.scanInfo) {
                     
-                    outputElement.textContent = `Datei: ${file.name}\nStatus: Erfolgreich geparst.\nStruktur: Objekt mit ${currentLogData.devices.length} Geräten gefunden.\nStarte Analyse...`;
+                    outputElement.textContent = `Datei: ${file.name}\nStatus: Erfolgreich geparst.\nStruktur: Objekt mit ${currentLogData.devices.length} Geräten und 'scanInfo' gefunden.\nStarte Analyse...`;
                     
-                    // V9: Starte die Analyse (die das V9-Control-Feld aktiviert)
+                    // V9.1 Fix: Übergibt v9ControlsElement zum Befüllen
                     analyzeAndDisplay(currentLogData.devices, resultsElement, headerElement, v9ControlsElement, null);
 
-                    outputElement.textContent += "\nAnalyse abgeschlossen. Mapping geladen. V9/V10-Tools bereit.";
+                    outputElement.textContent += "\nAnalyse abgeschlossen. Mapping geladen. V9/V11-Tools bereit.";
                     outputElement.scrollTop = outputElement.scrollHeight;
                 } else {
-                    // V4: Verbesserte Fehlermeldung
+                    // V4: Bessere Fehlermeldung
                     throw new Error("Die JSON-Datei hat nicht die erwartete Struktur. Ein 'devices'-Array und/oder 'scanInfo' wurde nicht gefunden.");
                 }
+
             } catch (error) {
+                // V2/V4: Fehlerbehandlung
                 console.error('Fehler beim Parsen oder Validieren:', error);
                 const errorMsg = `Fehler: ${error.message}`;
                 outputElement.textContent = errorMsg;
                 resultsElement.innerHTML = `<p class="error-message"><strong>Lade-Fehler:</strong><br>${escapeHTML(errorMsg)}</p>`;
-                headerElement.innerHTML = '';
-                v9ControlsElement.innerHTML = `<p class="error-message"><i>Laden fehlgeschlagen.</i></p>`;
-                currentLogData = null;
-                currentStats = [];
+                resetUI(); // Setzt UI im Fehlerfall zurück
             }
         };
-        
+
+        // V1: FileReader-Fehlerbehandlung
         reader.onerror = (e) => { 
             console.error('Fehler beim Lesen der Datei:', e);
-            const errorMsg = `Fehler: Die Datei konnte nicht gelesen werden. Details: ${e.message}`;
+            const errorMsg = `Fehler: Die Datei konnte nicht gelesen werden.`;
             outputElement.textContent = errorMsg;
             resultsElement.innerHTML = `<p class="error-message"><strong>Lade-Fehler:</strong><br>${escapeHTML(errorMsg)}</p>`;
-            headerElement.innerHTML = '';
-            v9ControlsElement.innerHTML = `<p class="error-message"><i>Laden fehlgeschlagen.</i></p>`;
-            currentLogData = null;
-            currentStats = [];
+            resetUI();
         };
-        
+
         // V1: Startet das Lesen
         reader.readAsText(file);
     });
-}); 
+});
