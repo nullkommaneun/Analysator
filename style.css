@@ -1,5 +1,5 @@
 /*
-  V1: Basis-Theme (unverändert)
+  V1: Basis-Theme
 */
 :root {
     --bg-color: #1a1b26;
@@ -7,10 +7,10 @@
     --card-color: #24283b;
     --border-color: #414868;
     --accent-color: #7aa2f7;
-    --accent-hover: #9ece6a;
+    --accent-hover: #9ece6a; /* Grün für "Erfolg" */
+    --danger-color: #f7768e; /* Rot für "Fehler" */
     --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: 'Consolas', 'Menlo', 'Courier New', monospace;
-    --danger-color: #f7768e;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,7 +24,7 @@ body {
 }
 
 .container {
-    max-width: 1200px; /* V4: Verbreitert für Tabellen */
+    max-width: 1000px; /* V5: Zurück auf 1000px, da Karten responsiv sind */
     margin: 0 auto;
     padding: 20px;
     background-color: var(--card-color);
@@ -47,7 +47,7 @@ h2 {
     padding-bottom: 5px;
 }
 
-/* V1: Upload-Button (unverändert) */
+/* V1: Upload-Button */
 input[type="file"] { display: none; }
 
 .upload-label {
@@ -59,11 +59,34 @@ input[type="file"] { display: none; }
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    margin-bottom: 10px; /* V5: Platz nach unten */
 }
 
 .upload-label:hover { background-color: var(--accent-hover); }
 
-/* V3: Status-Output (unverändert) */
+/*
+  V5-HINZUGEFÜGT: Styling für den Speicher-Button
+*/
+.action-button {
+    display: block; /* Volle Breite */
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--bg-color);
+    background-color: var(--accent-hover); /* Grüner "Speichern"-Button */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-bottom: 20px;
+}
+.action-button:hover {
+    background-color: #b9f27c;
+}
+
+
+/* V3: Status-Output */
 #output {
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
@@ -80,80 +103,106 @@ input[type="file"] { display: none; }
 }
 
 /*
-  V4-ÄNDERUNG: Wrapper für die Tabelle, um horizontales
-  Scrollen auf kleinen Bildschirmen zu ermöglichen, ohne
-  das gesamte Layout zu zerbrechen (Regel 2).
+  V5-ÄNDERUNG: Table-Styling (V4) entfernt und durch Card-Styling ersetzt.
+  Dies ist der Kern des Bugfixes für mobile Geräte.
 */
-#analysis-results-wrapper {
-    overflow-x: auto; /* Aktiviert horizontales Scrollen NUR für die Tabelle */
-}
-
-/* V3: Basis-Styling für den Ergebnisbereich */
 #analysis-results {
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    padding: 20px;
-    min-height: 150px;
+    /* V5: Entfernt Hintergrund und Rand, da die Karten ihn haben */
+    padding: 0; 
 }
 
 #analysis-results p {
     margin-bottom: 10px;
+    padding: 15px; /* V5: Falls Text (z.B. Lade-Text) da ist */
+    background-color: var(--bg-color);
+    border-radius: 5px;
 }
 
-/*
-  V4-HINZUGEFÜGT: Styling für die Statistik-Tabelle
-*/
-.stats-table {
-    width: 100%;
-    border-collapse: collapse; /* Saubere Ränder */
-    min-width: 600px; /* Verhindert, dass die Tabelle zu stark gequetscht wird */
-}
-
-.stats-table th,
-.stats-table td {
+.device-card {
+    background-color: var(--bg-color); /* Dunkler als Container-Hintergrund */
     border: 1px solid var(--border-color);
-    padding: 10px 12px;
-    text-align: left;
-    /* V4-FIX: Erlaubt das Umbrechen von langen IDs */
-    word-break: break-all; 
-    vertical-align: top;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    overflow: hidden; /* Stellt sicher, dass Ränder eingehalten werden */
 }
 
-.stats-table th {
-    background-color: var(--card-color);
-    color: var(--accent-hover);
-    font-size: 0.9rem;
-    text-transform: uppercase;
+.card-row {
+    display: flex;
+    flex-wrap: wrap; /* Erlaubt Umbruch auf sehr kleinen Bildschirmen */
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+    line-height: 1.4;
 }
 
-.stats-table tbody tr:hover {
-    background-color: #2a2e42; /* Leichter Hover-Effekt */
+.device-card .card-row:last-child {
+    border-bottom: none;
 }
 
-.stats-table td:nth-child(1) {
-    font-family: var(--font-mono); /* Device ID */
-    font-size: 0.85rem;
+.card-label {
+    font-weight: bold;
+    color: var(--fg-color);
+    flex-basis: 120px; /* Feste Basis für Labels */
+    margin-right: 10px;
 }
-.stats-table td:nth-child(2) {
-    font-weight: bold; /* Device Name */
+
+.card-value {
+    flex-basis: 60%; /* Nimmt den Rest des Platzes ein */
+    flex-grow: 1;
+    word-break: break-all; /* Wichtig für lange IDs */
 }
-.stats-table td:nth-child(3),
-.stats-table td:nth-child(4),
-.stats-table td:nth-child(5) {
-    text-align: right; /* Zahlen rechtsbündig */
+
+/* Spezielles Styling für bestimmte Werte */
+.card-value.mono {
     font-family: var(--font-mono);
     font-size: 0.9rem;
+    color: var(--accent-color); /* Hebt IDs und Zahlen hervor */
+}
+.card-value.name {
+    font-weight: bold;
+    color: #c0caf5;
+}
+.card-value.rssi-max {
+    font-weight: bold;
+    color: var(--accent-hover); /* Bester Wert in grün */
 }
 
-/* V4: Styling für Fehlermeldungen im Analysefenster */
+/* V5: Styling für das Mapping-Inputfeld */
+.mapping-row {
+    background-color: var(--card-color); /* Hebt die Eingabezeile hervor */
+    align-items: stretch;
+}
+.mapping-row .card-label {
+    color: var(--accent-hover);
+    padding-top: 5px; /* Bessere vertikale Ausrichtung */
+}
+.mapping-input {
+    flex-basis: 60%;
+    flex-grow: 1;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--fg-color);
+    padding: 8px 10px;
+    border-radius: 5px;
+    font-family: var(--font-main);
+    font-size: 1rem;
+}
+.mapping-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 5px var(--accent-color);
+}
+
+
+/* V4: Styling für Fehlermeldungen */
 .error-message {
     color: var(--danger-color);
     font-family: var(--font-mono);
     font-weight: bold;
 }
 
-/* V1: Footer (unverändert) */
+/* V1: Footer */
 footer {
     text-align: center;
     margin-top: 30px;
@@ -161,14 +210,10 @@ footer {
     border-top: 1px solid var(--border-color);
     font-size: 0.9rem;
 }
-
 footer a {
     color: var(--accent-color);
     text-decoration: none;
-    transition: color 0.3s ease;
 }
-
 footer a:hover {
     color: var(--accent-hover);
-    text-decoration: underline;
 }
