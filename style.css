@@ -21,6 +21,10 @@
     --color-4: #bb9af7; /* Lila */
     --color-5: #ff9e64; /* Orange */
     --color-6: #7dcfff; /* Cyan */
+    --color-7: #e0af68; /* Ocker */
+    --color-8: #c0caf5; /* Hellblau/Weiß */
+    --color-9: #f7cbf7; /* Pink */
+    --color-10: #a9b1d6; /* Grau (Fallback) */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -92,69 +96,68 @@ input[type="file"] { display: none; }
 .action-button.danger:hover { background-color: #ff9eaf; }
 
 /*
-  V8-HINZUGEFÜGT: Styling für Zeitstrahl-Analyse
+  V9-REFAKTORING: V8 zu V9
 */
-.v8-container {
+.v9-container { /* (vorher v8-container) */
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 15px;
     margin-bottom: 20px;
 }
-.v8-container summary {
+.v9-container summary {
     font-weight: bold;
     font-size: 1.1rem;
     color: var(--accent-color);
     cursor: pointer;
 }
-.v8-content {
+.v9-content { /* (vorher v8-content) */
     padding-top: 15px;
 }
-.v8-content p {
+.v9-content p {
     margin-bottom: 15px;
     font-style: italic;
     font-size: 0.9rem;
 }
-.v8-controls-list {
-    display: flex;
-    flex-direction: column; /* Checkboxen untereinander */
-    gap: 8px;
-    margin-bottom: 20px;
-    background-color: var(--card-color);
-    padding: 10px;
-    border-radius: 5px;
-}
-.v8-controls-list label {
+
+/* V9: Neuer "Intelligenter Filter" (ersetzt v8-controls-list) */
+.v9-controls-simple {
     display: flex;
     align-items: center;
-    cursor: pointer;
+    gap: 10px;
+    margin-bottom: 20px;
+    background-color: var(--card-color);
+    padding: 15px;
+    border-radius: 5px;
 }
-.v8-controls-list input[type="checkbox"] {
-    margin-right: 10px;
-    /* V8: Styling für Checkboxen */
-    accent-color: var(--accent-color);
-    width: 16px;
-    height: 16px;
+.v9-controls-simple label {
+    font-weight: bold;
 }
-/* V8: Farbfeld für die Legende in der Checkbox-Liste */
-.v8-controls-list .legend-color-box {
-    width: 15px;
-    height: 15px;
-    margin-right: 8px;
-    border: 1px solid var(--fg-color);
-    display: inline-block;
-    vertical-align: middle;
+.v9-controls-simple input[type="number"] {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--fg-color);
+    padding: 8px 10px;
+    border-radius: 5px;
+    font-family: var(--font-main);
+    font-size: 1rem;
+    width: 80px;
 }
-/* V8: Container für den globalen Graphen */
-#v8-graph-container {
+.v9-controls-simple input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+/* V9: Container für globalen Graphen */
+#v9-graph-container {
     margin-top: 20px;
-    overflow-x: auto; /* Falls Graph breiter als Container ist */
+    overflow-x: auto; /* Wichtig für mobile Ansicht */
 }
 .timeline-graph {
     width: 100%;
-    min-width: 600px; /* Mindestbreite, damit es nicht gequetscht wird */
+    min-width: 600px;
     height: auto;
-    background-color: #16161e; /* Dunkelster Hintergrund */
+    background-color: #16161e;
     border-radius: 5px;
     border: 1px solid var(--border-color);
 }
@@ -371,4 +374,4 @@ footer a {
 }
 footer a:hover {
     color: var(--accent-hover);
-} 
+}
