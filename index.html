@@ -22,22 +22,20 @@
         <input type="file" id="jsonUpload" accept=".json">
 
         <!--
-          V3-ÄNDERUNG: Wir fügen einen dedizierten Bereich für die Analyseergebnisse hinzu.
-          Dies ist der Ort, an dem wir unsere "Schatzkarte" (Mapping) und
-          andere Erkenntnisse anzeigen werden.
+          V4-ÄNDERUNG: Wir ersetzen das <div> durch eine <table_wrapper>
+          und eine <table>, um die V4-Statistiken anzuzeigen.
         -->
-        <h2>Analyse-Ergebnisse:</h2>
-        <div id="analysis-results">
-            <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
+        <h2>Analyse-Ergebnisse: Geräte-Statistiken</h2>
+        <div id="analysis-results-wrapper">
+            <div id="analysis-results">
+                <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
+                <!-- Die Tabelle wird hier von app.js (V4) eingefügt -->
+            </div>
         </div>
 
-        <!--
-          V3-ÄNDERUNG: Das <pre>-Element ist jetzt nur noch für Debugging-Zwecke
-          gedacht, falls wir die Rohdaten doch einmal sehen müssen.
-          Standardmäßig wird es nicht mehr mit dem vollen JSON gefüllt.
-        -->
-        <h2>Rohdaten-Vorschau (Debug):</h2>
-        <pre id="output">Hier erscheinen Statusmeldungen und ggf. Rohdaten...</pre>
+        <!-- V3: Debug/Status-Fenster -->
+        <h2>Status-Log (Debug):</h2>
+        <pre id="output">Hier erscheinen Statusmeldungen...</pre>
 
         <!-- V1: Footer -->
         <footer>
@@ -49,3 +47,4 @@
 </html>
 
 
+ 
