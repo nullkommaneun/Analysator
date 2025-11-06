@@ -1,106 +1,161 @@
-// V3: Haupt-App-Logik (Erste Analyse-Funktion)
+// V4: Haupt-App-Logik (Statistik-Analyse)
 
-// V2: Globaler "State" für die geparsten Daten
+// V2: Globaler "State"
 let currentLogData = null;
 
 /**
- * V3: Haupt-Analysefunktion (Schritt 1: IDs finden)
- * Diese Funktion wird aufgerufen, nachdem das JSON erfolgreich geparst wurde.
+ * V4: Haupt-Analysefunktion (ersetzt V3 'displayAnalysis')
+ * Analysiert das 'devices'-Array und zeigt Statistiken in einer Tabelle an.
  *
- * @param {Array<object>} logData - Das geparste Array von Beacon-Scan-Events.
+ * @param {Array<object>} devicesArray - Das 'devices'-Array aus dem JSON (currentLogData.devices)
  * @param {HTMLElement} resultsContainer - Das DOM-Element, in das geschrieben wird.
  */
-function displayAnalysis(logData, resultsContainer) {
-    // ARCHITEKTUR-HINWEIS (Regel 1):
-    // Statt das riesige JSON-Objekt anzuzeigen, führen wir nun eine
-    // echte Analyse durch.
-    //
-    // ZIEL: Finde alle *einzigartigen* Beacon-IDs im gesamten Log.
-    // Dies ist der erste Schritt zur Erstellung unserer "Schatzkarte". Wir
-    // müssen wissen, welche "Orte" (anonyme IDs) überhaupt existieren.
-
-    // V3-FIX: Robuste Typprüfung. Wir erwarten, dass die JSON-Datei
-    // ein Array von Scan-Events ist.
-    if (!Array.isArray(logData)) {
-        console.error("Datenanalyse-Fehler: Geladene JSON-Datei ist kein Array.", logData);
+function analyzeAndDisplay(devicesArray, resultsContainer) {
+    // V3-FIX (angepasst an V4):
+    // Wir prüfen jetzt, ob wir das 'devices'-Array (logData.devices) erhalten haben.
+    if (!Array.isArray(devicesArray)) {
+        // Dieser Fall sollte durch die Prüfung in 'onload' bereits abgefangen werden,
+        // aber doppelte Sicherheit (defensive Programmierung) ist gut.
+        console.error("Analyse-Fehler: Es wurde kein 'devices'-Array übergeben.", devicesArray);
         resultsContainer.innerHTML = `
-            <p style="color: #f7768e;"><strong>Analyse-Fehler:</strong></p>
-            <p>Die geladene Datei hat nicht die erwartete Struktur. Es wurde ein Array <code>[...]</code> erwartet, aber stattdessen ein <code>${typeof logData}</code> gefunden.</p>
-        `;
+            <p class="error-message">
+                <strong>Analyse-Fehler:</strong><br>
+                Die Datenstruktur ist ungültig. Konnte 'devices'-Array nicht finden.
+            </p>`;
         return;
     }
     
-    if (logData.length === 0) {
-        resultsContainer.innerHTML = `<p>Logdatei ist leer. Keine Daten zum Analysieren.</p>`;
+    if (devicesArray.length === 0) {
+        resultsContainer.innerHTML = `<p>Logdatei enthält 0 Geräte. Nichts zu analysieren.</p>`;
         return;
     }
 
-    // ARCHITEKTUR-HINWEIS (V3):
-    // Ein 'Set' ist die performanteste und sauberste Methode in JavaScript,
-    // um einzigartige (unique) Werte zu sammeln.
-    // Wir iterieren über das (potenziell riesige) Array und fügen jede 'beaconId'
-    // dem Set hinzu. Doppelte Einträge werden vom Set automatisch ignoriert.
-    const uniqueBeaconIds = new Set();
+    // ARCHITEKTUR-HINWEIS (V4):
+    // Wir iterieren nicht mehr über Scan-Events, sondern über Geräte.
+    // Jedes Gerät enthält bereits sein eigenes 'rssiHistory'-Array.
+    // Wir sammeln die Statistiken, die wir in V4 anzeigen wollen.
+    const stats = [];
     
-    for (const event of logData) {
-        // Defensivprogrammierung: Sicherstellen, dass das Event-Objekt
-        // die erwartete Eigenschaft 'beaconId' hat.
-        if (event && event.beaconId) {
-            uniqueBeaconIds.add(event.beaconId);
+    for (const device of devicesArray) {
+        // Defensivprogrammierung: Überspringe ungültige Geräteeinträge
+        if (!device || !device.id || !Array.isArray(device.rssiHistory)) {
+            console.warn("Ungültiger Geräteeintrag im Log übersprungen:", device);
+            continue;
         }
+
+        const rssiEvents = device.rssiHistory;
+        const count = rssiEvents.length;
+
+        let rssiSum = 0;
+        let maxRssi = -Infinity; // Startwert für 'Maximum finden'
+
+        if (count > 0) {
+            for (const event of rssiEvents) {
+                // V4-FIX: Stellen sicher, dass 'r' (rssi) eine Zahl ist
+                if (typeof event.r === 'number') {
+                    rssiSum += event.r;
+                    if (event.r > maxRssi) {
+                        maxRssi = event.r;
+                    }
+                }
+            }
+        } else {
+            maxRssi = null; // Kein Max-Wert, wenn keine Events da sind
+        }
+
+        // V4: Durchschnitts-RSSI berechnen (und durch 0-Teilung verhindern)
+        const avgRssi = (count > 0) ? (rssiSum / count).toFixed(2) : null;
+
+        // V4: Statistik-Objekt für dieses Gerät sammeln
+        stats.push({
+            id: device.id,
+            name: device.name || "[Unbenannt]",
+            count: count,
+            avgRssi: avgRssi,
+            maxRssi: maxRssi
+        });
     }
 
-    // V3: Ausgabe der Ergebnisse generieren
-    
-    // Wir wandeln das Set zurück in ein Array, um es sortieren zu können.
-    // Das macht die Liste für Menschen leichter lesbar.
-    const sortedIds = Array.from(uniqueBeaconIds).sort();
-
+    // V4: Sortieren der Ergebnisse
     // ARCHITEKTUR-HINWEIS (Regel 1):
-    // Wir bauen das HTML als String. Für eine kleine Liste ist das
-    // performant genug. Bei Tausenden von DOM-Elementen würden wir
-    // 'document.createDocumentFragment()' verwenden, um das DOM nicht
-    // bei jeder 'appendChild'-Operation neu zu berechnen.
-    
+    // Wir sortieren die Tabelle. Ein guter Standard ist, nach der
+    // maximalen Signalstärke (maxRssi) absteigend zu sortieren.
+    // Geräte, die dem Scanner am nächsten kamen (höchster RSSI),
+    // sind für die Kartierung am wichtigsten.
+    stats.sort((a, b) => {
+        // V4-FIX: Umgang mit 'null' Werten (Geräte ohne Scans)
+        const rssiA = a.maxRssi ?? -Infinity;
+        const rssiB = b.maxRssi ?? -Infinity;
+        return rssiB - rssiA; // Absteigend (von -50 (nah) zu -90 (fern))
+    });
+
+
+    // V4: HTML-Tabelle generieren
     let htmlOutput = `
-        <p>Analyse von <strong>${logData.length}</strong> Scan-Events abgeschlossen.</p>
-        <p>Es wurden <strong>${sortedIds.length}</strong> einzigartige Beacon-IDs (Orte) gefunden:</p>
+        <p>Analyse von <strong>${devicesArray.length}</strong> Geräten abgeschlossen.</p>
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Device ID (Anonym)</th>
+                    <th>Bekannter Name</th>
+                    <th>Scan-Events (Anzahl)</th>
+                    <th>Avg. RSSI (dBm)</th>
+                    <th>Max RSSI (Nächster Wert)</th>
+                </tr>
+            </thead>
+            <tbody>
     `;
 
-    if (sortedIds.length > 0) {
-        // Wir erstellen eine Liste (<ul>) mit den IDs
-        htmlOutput += '<ul>';
-        for (const id of sortedIds) {
-            // Jede ID wird zu einem Listeneintrag (<li>)
-            // V3-FIX: Wir verwenden 'textContent', um die ID in HTML umzuwandeln.
-            // Das ist zwar hier nicht zwingend nötig, aber gute Praxis,
-            // um XSS zu verhindern, falls IDs seltsame Zeichen (wie <>) enthalten.
-            // Sicherer wäre es, die 'id' zu escapen, aber für unsere Zwecke
-            // gehen wir davon aus, dass die IDs sicher sind.
-            // Einfacherer Ansatz: direkt als String einfügen.
-            htmlOutput += `<li>${id}</li>`;
-        }
-        htmlOutput += '</ul>';
-    } else {
-        htmlOutput += `<p>Keine Events mit einer 'beaconId' gefunden.</p>`;
+    for (const device of stats) {
+        htmlOutput += `
+            <tr>
+                <td>${device.id}</td>
+                <td>${escapeHTML(device.name)}</td> <!-- V4-FIX: Namen escapen (Regel 2) -->
+                <td>${device.count}</td>
+                <td>${device.avgRssi ?? 'N/A'}</td>
+                <td>${device.maxRssi ?? 'N/A'}</td>
+            </tr>
+        `;
     }
 
-    // V3: Wir schreiben das generierte HTML in den Results-Container.
+    htmlOutput += `
+            </tbody>
+        </table>
+    `;
+
     resultsContainer.innerHTML = htmlOutput;
+}
+
+/**
+ * V4-HINZUGEFÜGT (Regel 2: Proaktives Mitdenken):
+ * Wir müssen Gerätenamen "escapen", bevor wir sie als HTML einfügen.
+ * Wenn ein Beacon einen Namen wie "<script>alert('XSS')</script>" sendet,
+ * würde das sonst unseren Analysator kompromittieren (XSS-Angriff).
+ *
+ * @param {string} str - Der potenziell unsichere String.
+ * @returns {string} - Der HTML-gesicherte String.
+ */
+function escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 
 // V1/V2: Haupt-Event-Listener
 document.addEventListener('DOMContentLoaded', () => {
     
-    // V3: Wir holen uns *beide* Output-Elemente
+    // V3: DOM-Elemente cachen
     const fileInput = document.getElementById('jsonUpload');
-    const outputElement = document.getElementById('output'); // Für Debug/Status
-    const resultsElement = document.getElementById('analysis-results'); // Für Ergebnisse
+    const outputElement = document.getElementById('output');
+    const resultsElement = document.getElementById('analysis-results');
 
     if (!fileInput || !outputElement || !resultsElement) {
         console.error("Kritischer Fehler: UI-Elemente wurden nicht im DOM gefunden.");
-        // V3: Status im Hauptfenster anzeigen, falls 'output' fehlt
         if(outputElement) outputElement.textContent = "UI-Initialisierungsfehler.";
         return;
     }
@@ -116,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         outputElement.textContent = `Lese und parse Datei: ${file.name} ...`;
-        // V3: Ergebnisfenster während des Ladens zurücksetzen
         resultsElement.innerHTML = `<p>Lese Datei ${file.name}...</p>`;
 
         const reader = new FileReader();
@@ -125,43 +179,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const fileContent = e.target.result;
 
             try {
-                // V2: Parsen (blockierend, siehe V2-Hinweis)
+                // V2: Parsen (blockierend)
                 currentLogData = JSON.parse(fileContent);
 
-                // V3-ÄNDERUNG:
-                // Wir füllen das <pre> nicht mehr mit dem vollen JSON.
-                // Stattdessen geben wir nur eine Erfolgsmeldung aus.
-                // Das spart extrem viel Speicher und DOM-Renderzeit!
-                outputElement.textContent = `Datei: ${file.name}\nStatus: Erfolgreich geparst.\nStarte Analyse...`;
+                // V4-FIX (Bugfix):
+                // Wir prüfen die neue, korrekte Struktur (Objekt mit 'devices'-Array)
+                if (typeof currentLogData === 'object' && currentLogData !== null && Array.isArray(currentLogData.devices)) {
+                    
+                    outputElement.textContent = `Datei: ${file.name}\nStatus: Erfolgreich geparst.\nStruktur: Objekt mit ${currentLogData.devices.length} Geräten gefunden.\nStarte Analyse...`;
 
-                // V3: Rufe die neue Analyse-Funktion auf
-                displayAnalysis(currentLogData, resultsElement);
+                    // V4: Rufe die Analysefunktion mit dem 'devices'-Array auf
+                    analyzeAndDisplay(currentLogData.devices, resultsElement);
 
-                // V3: Erfolgsmeldung im Debug-Fenster vervollständigen
-                outputElement.textContent += "\nAnalyse abgeschlossen.";
+                    outputElement.textContent += "\nAnalyse abgeschlossen.";
 
+                } else {
+                    // V4-FIX: Die Datei ist gültiges JSON, aber nicht, was wir erwarten.
+                    throw new Error("Die JSON-Datei hat nicht die erwartete Struktur. Ein 'devices'-Array (logData.devices) wurde nicht gefunden.");
+                }
 
             } catch (error) {
-                // V2: Fehlerbehandlung
-                console.error('Fehler beim Parsen des JSON:', error);
-                const errorMsg = `Fehler: Die Datei ist kein gültiges JSON.\n\nDetails: ${error.message}`;
+                // V2/V3: Fehlerbehandlung (ungültiges JSON oder V4-Strukturfehler)
+                console.error('Fehler beim Parsen oder Validieren der Struktur:', error);
+                const errorMsg = `Fehler: ${error.message}`;
                 
-                // V3: Fehler in *beiden* Fenstern anzeigen
                 outputElement.textContent = errorMsg;
-                resultsElement.innerHTML = `<p style="color: #f7768e;"><strong>Lade-Fehler:</strong></de>${errorMsg}`;
+                resultsElement.innerHTML = `<p class="error-message"><strong>Lade-Fehler:</strong><br>${escapeHTML(errorMsg)}</p>`;
                 
                 currentLogData = null;
             }
         };
 
         reader.onerror = (e) => {
-            // V1: Fehlerbehandlung
+            // V1: Fehlerbehandlung (Lesefehler)
             console.error('Fehler beim Lesen der Datei:', e);
             const errorMsg = `Fehler: Die Datei konnte nicht gelesen werden.\n\nDetails: ${e.message}`;
             
-            // V3: Fehler in *beiden* Fenstern anzeigen
             outputElement.textContent = errorMsg;
-            resultsElement.innerHTML = `<p style="color: #f7768e;"><strong>Lade-Fehler:</strong></de>${errorMsg}`;
+            resultsElement.innerHTML = `<p class="error-message"><strong>Lade-Fehler:</strong><br>${escapeHTML(errorMsg)}</p>`;
             
             currentLogData = null;
         };
