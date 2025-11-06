@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BeaconBay Analyzer</title>
     
-    <!-- V1: CSS importieren -->
+    <!-- V1: CSS-Datei importieren -->
     <link rel="stylesheet" href="style.css">
     
-    <!-- V1: JS-Modul importieren -->
+    <!-- V1: JS-Datei als Modul importieren (defer sorgt für Ausführung nach HTML-Parsing) -->
     <script type="module" src="app.js" defer></script>
 </head>
 <body>
@@ -17,30 +17,33 @@
         <h1>BeaconBay Analyzer</h1>
         <p>Lade eine <code>beaconbay_log_... .json</code> Datei, um die Daten zu analysieren und zu visualisieren.</p>
 
-        <!-- V1: Datei-Upload für JSON -->
-        <label for="jsonUpload" class="upload-label">1. JSON-Logdatei auswählen</label>
+        <!-- V1: Datei-Upload -->
+        <label for="jsonUpload" class="upload-label">JSON-Logdatei auswählen</label>
         <input type="file" id="jsonUpload" accept=".json">
 
-        <!-- V9: Zeitstrahl-Analyse Sektion -->
-        <h2>V11: Globale Zeitstrahl- & Karten-Analyse</h2>
-        <details id="v9-container" class="v9-container" open> <!-- V11: Standardmäßig geöffnet -->
-            <summary>Triangulations-Analyse (Graph & Karte)</summary>
+        <!-- 
+          V9/V11: Globaler Analyse-Bereich
+          Hier ist die V9 (Zeitstrahl-Graph) und V11 (Karten-Upload) Logik kombiniert.
+        -->
+        <h2>V9/V11: Korrelations-Analyse (Graph + Karte)</h2>
+        <details id="v9-container" class="v9-container" open>
+            <summary>Triangulations-Zeitstrahl & Karte anzeigen/verstecken</summary>
             
             <div class="v9-content">
-                <p>Zeichnet die RSSI-Verläufe der "redseeligsten" (aktivsten) Geräte in einem globalen Graphen. Lade optional eine Karte hoch, um die Signale visuell zuzuordnen.</p>
+                <p>Zeichnet die RSSI-Verläufe der "redseeligsten" Geräte. Lade optional ein Karten-Bild hoch, um die Graphen-Peaks mit realen Orten zu korrelieren.</p>
                 
-                <!-- V9: "Intelligenter Filter" UI -->
-                <div id="v9-controls-simple" class="v9-controls-simple">
-                    <!-- V9.1 Fix: Inhalt wird von JS generiert -->
+                <!-- V9: "Intelligenter Filter" Steuerung -->
+                <div id="v9-controls-simple">
+                    <!-- Inhalt wird von JS generiert (input type=number) -->
                 </div>
                 
                 <button id="v9-generateBtn" class="action-button">
-                    2. Globalen Graphen generieren
+                    Globalen Graphen generieren
                 </button>
                 
-                <!-- V9: Globaler Graph-Container -->
+                <!-- V9: Graph-Container -->
                 <div id="v9-graph-container">
-                    <!-- Der globale SVG-Graph wird hier eingefügt -->
+                    <!-- Der globale SVG-Graph wird hier von JS eingefügt -->
                 </div>
                 
                 <!-- V10: Export-Container -->
@@ -48,18 +51,17 @@
                     <!-- Download-Buttons werden hier von JS eingefügt -->
                 </div>
 
-                <!-- 
-                  V11-HINZUGEFÜGT: Sektion für Karten-Upload
-                -->
-                <div class="v11-map-section">
-                    <hr class="v11-divider">
-                    <label for="mapUpload" class="upload-label map-upload-label">3. Optional: Karten-Bild hochladen</label>
-                    <input type="file" id="mapUpload" accept="image/png, image/jpeg, image/gif, image/webp">
-                    
-                    <div id="v11-map-container">
-                        <!-- Das hochgeladene Kartenbild wird hier eingefügt -->
-                        <p class="v11-map-placeholder">Hier erscheint dein Grundriss oder Screenshot...</p>
-                    </div>
+                <!-- V11: Karten-Upload-Bereich -->
+                <div class="v11-map-uploader">
+                    <label for="mapUpload" class="upload-label secondary">
+                        Optional: Karten-Bild hochladen
+                    </label>
+                    <input type="file" id="mapUpload" accept="image/png, image/jpeg, image/gif">
+                </div>
+
+                <!-- V11: Karten-Anzeige-Container -->
+                <div id="v11-map-container">
+                    <!-- Das Karten-Bild wird hier von JS eingefügt -->
                 </div>
 
             </div>
@@ -68,7 +70,7 @@
 
         <h2>Geräte-Analyse & Mapping</h2>
         
-        <!-- V6: Mapping-Buttons -->
+        <!-- V5: Mapping-Buttons -->
         <button id="saveMappingBtn" class="action-button">
             Mapping im Browser speichern
         </button>
@@ -77,19 +79,34 @@
             Mapping löschen
         </button>
 
-        <!-- V7: Analyse-Header (für Count) -->
+        <!-- V7: Analyse-Header (Zusammenfassung) -->
         <div id="analysis-header">
-             <!-- Wird von JS befüllt -->
+             <!-- Wird von JS befüllt (z.B. "Analyse von 674 Geräten...") -->
         </div>
 
-        <!-- V5: Container für die Karten (ersetzt <table>) -->
+        <!-- 
+          V12-HINZUGEFÜGT: Paginierungs-Container
+          Dieser wird von JS (renderPaginationControls) gefüllt.
+        -->
+        <div id="pagination-controls">
+            <!-- Paginierungs-Buttons (z.B. Seite [1] [2] [3]...) werden hier eingefügt -->
+        </div>
+
+        <!-- V3/V5: Ergebnisse (jetzt als Karten-Container) -->
         <div id="analysis-results">
             <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
         </div>
 
+        <!-- V12: Zweite Paginierungs-Leiste (für lange Seiten) -->
+        <div id="pagination-controls-bottom">
+            <!-- Wird ebenfalls von JS gefüllt -->
+        </div>
+
         <h2>Status-Log (Debug):</h2>
+        <!-- V1/V3: Output-Fenster (jetzt nur für Status) -->
         <pre id="output">Hier erscheinen Statusmeldungen...</pre>
 
+        <!-- V1: Footer-Link -->
         <footer>
             Danksagung: Dieses Tool verwendet [Sparkline-SVGs (erstellt von Gemini)](https://gemini.google.com/), um RSSI-Trends ohne externe Bibliotheken darzustellen.
             <br>
@@ -101,3 +118,4 @@
 </html>
 
 
+ 
