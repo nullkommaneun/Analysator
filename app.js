@@ -1,19 +1,22 @@
-// V8: Globale Zeitstrahl-Analyse (Triangulations-Graph)
+// V9: Globaler Graph mit "intelligentem Filter" (Top "N" redseeligste Geräte)
 
 // V5: Globaler State
 let currentLogData = null;
+// V9: Globaler State für die sortierte Statistik-Liste (Regel 2)
+let currentStats = []; 
 
 // V5: localStorage-Key
 const MAPPING_STORAGE_KEY = 'beaconbay-mapping';
 
-// V8: Farbpalette für globalen Graphen
-const V8_GRAPH_COLORS = [
+// V8: Farbpalette (erweitert auf 10)
+const V9_GRAPH_COLORS = [
     'var(--color-1)', 'var(--color-2)', 'var(--color-3)', 
-    'var(--color-4)', 'var(--color-5)', 'var(--color-6)'
+    'var(--color-4)', 'var(--color-5)', 'var(--color-6)',
+    'var(--color-7)', 'var(--color-8)', 'var(--color-9)', 'var(--color-10)'
 ];
 
 
-// --- V5/V6 Mapping-Funktionen ---
+// --- V5/V6 Mapping-Funktionen (angepasst für V9) ---
 
 function loadMapping() {
     try {
@@ -26,7 +29,10 @@ function loadMapping() {
     return {};
 }
 
-function saveMapping(resultsContainer, outputElement, headerElement, v8ControlsElement) {
+/**
+ * V9: saveMapping aktualisiert nur noch die Karten, nicht mehr die V8/V9-Controls.
+ */
+function saveMapping(resultsContainer, outputElement, headerElement) {
     const newMapping = {};
     const inputs = resultsContainer.querySelectorAll('.mapping-input');
     let savedCount = 0;
@@ -46,10 +52,16 @@ function saveMapping(resultsContainer, outputElement, headerElement, v8ControlsE
         outputElement.textContent += `\n${logMsg}`;
         outputElement.scrollTop = outputElement.scrollHeight;
 
-        // V8-FIX: Nach dem Speichern 'analyzeAndDisplay' neu ausführen,
-        // um die V8-Checkbox-Liste UND die grünen Haken zu aktualisieren.
+        // V9-FIX: Aktualisiere nur die Karten-Ansicht (für die grünen Haken)
+        // und die V9-Controls (falls Namen sich geändert haben).
         if (currentLogData && currentLogData.devices) {
-             analyzeAndDisplay(currentLogData.devices, resultsContainer, headerElement, v8ControlsElement, null);
+             // WICHTIG: Wir müssen die 'activeCardId' finden, damit die
+             // Details nach dem Speichern offen bleiben (Regel 2).
+             const activeCard = resultsContainer.querySelector('.device-card.details-active');
+             const activeId = activeCard ? activeCard.dataset.deviceId : null;
+             
+             // Führe analyzeAndDisplay neu aus
+             analyzeAndDisplay(currentLogData.devices, resultsContainer, headerElement, document.getElementById('v9-graph-container'), activeId);
         }
     } catch (error) {
         const logMsg = `[FEHLER] Mapping konnte nicht gespeichert werden: ${error.message}`;
@@ -57,20 +69,26 @@ function saveMapping(resultsContainer, outputElement, headerElement, v8ControlsE
     }
 }
 
-function clearMapping(resultsContainer, outputElement, headerElement, v8ControlsElement) {
+/**
+ * V9: clearMapping aktualisiert Karten und V9-Bereich.
+ */
+function clearMapping(resultsContainer, outputElement, headerElement, v9ControlsElement, v9GraphContainer) {
     try {
         localStorage.removeItem(MAPPING_STORAGE_KEY);
         const logMsg = `[${new Date().toLocaleTimeString()}] Mapping gelöscht.`;
         outputElement.textContent += `\n${logMsg}`;
 
         if (currentLogData && currentLogData.devices) {
-            // V8-FIX: Ansicht aktualisieren (Karten + V8-Liste)
-            analyzeAndDisplay(currentLogData.devices, resultsContainer, headerElement, v8ControlsElement, null);
+            // V9-FIX: Ansicht aktualisieren
+            analyzeAndDisplay(currentLogData.devices, resultsContainer, headerElement, v9ControlsElement, null);
         } else {
             resultsContainer.innerHTML = '<p>Mapping gelöscht. Lade eine Datei.</p>';
             headerElement.innerHTML = '';
-            v8ControlsElement.innerHTML = '<p><i>Lade eine Datei, um Geräte zu mappen.</i></p>';
         }
+        // V9: Auch V9-Bereich zurücksetzen
+        v9ControlsElement.innerHTML = '<p><i>Lade eine Datei, um Geräte zu mappen.</i></p>';
+        v9GraphContainer.innerHTML = '';
+
     } catch (error) {
         const logMsg = `[FEHLER] Mapping konnte nicht gelöscht werden: ${error.message}`;
         outputElement.textContent += `\n${logMsg}`;
@@ -78,7 +96,7 @@ function clearMapping(resultsContainer, outputElement, headerElement, v8Controls
 }
 
 // --- V7: Detail-Funktionen (Sparkline & Adverts) ---
-
+// (Unverändert von V7)
 function formatAdvertisements(adverts) {
     if (!adverts || adverts.length === 0) {
         return '<pre class="advert-list">Keine Advertisement-Daten verfügbar.</pre>';
@@ -92,7 +110,6 @@ function formatAdvertisements(adverts) {
 }
 
 function generateSparkline(rssiHistory) {
-    // V7-Logik (unverändert)
     if (!rssiHistory || rssiHistory.length < 2) {
         return `<p>Nicht genügend Daten für RSSI-Graph (min. 2 Punkte benötigt).</p>`;
     }
@@ -105,8 +122,10 @@ function generateSparkline(rssiHistory) {
         if (rssi > minRssi) minRssi = rssi; if (rssi < maxRssi) maxRssi = rssi;
         return { time, rssi };
     });
-    minRssi += 5; maxRssi -= 5;
-    const timeRange = maxTime - minTime; const rssiRange = maxRssi - minRssi;
+    minRssi = Math.min(-35, minRssi + 5); 
+    maxRssi = Math.max(-105, maxRssi - 5);
+    const timeRange = (maxTime - minTime) || 1; 
+    const rssiRange = (maxRssi - minRssi) || 1;
     const scaleX = (time) => padding + ((time - minTime) / timeRange) * width;
     const scaleY = (rssi) => padding + ((maxRssi - rssi) / rssiRange) * height;
     let pathData = "M" + scaleX(dataPoints[0].time) + " " + scaleY(dataPoints[0].rssi);
@@ -128,65 +147,23 @@ function generateSparkline(rssiHistory) {
     `;
 }
 
-// --- V8: Neue Funktionen für globalen Graphen ---
-
+// --- V8/V9: Globale Graph-Funktion ---
 /**
- * V8: Füllt die Checkbox-Liste im V8-Container mit gemappten Geräten.
- * @param {Array<object>} mappedDevices - Array von {id, mappedName, ...}
- * @param {HTMLElement} v8ControlsElement - Der Container für die Checkboxen.
- */
-function populateV8Controls(mappedDevices, v8ControlsElement) {
-    if (!mappedDevices || mappedDevices.length === 0) {
-        v8ControlsElement.innerHTML = '<p><i>Noch keine Geräte gemappt. Bitte im Analyse-Bereich Namen eintragen und speichern.</i></p>';
-        return;
-    }
-
-    let html = '';
-    mappedDevices.forEach((device, index) => {
-        const color = V8_GRAPH_COLORS[index % V8_GRAPH_COLORS.length];
-        html += `
-            <label style="color: ${color};">
-                <input type="checkbox" 
-                       class="v8-device-toggle" 
-                       value="${device.id}" 
-                       data-color="${color}" 
-                       data-name="${escapeHTML(device.mappedName)}"
-                       checked>
-                <span class="legend-color-box" style="background-color: ${color};"></span>
-                ${escapeHTML(device.mappedName)} (ID: ...${device.id.substring(device.id.length - 6)})
-            </label>
-        `;
-    });
-    v8ControlsElement.innerHTML = html;
-}
-
-/**
- * V8: Generiert den globalen Zeitstrahl-Graphen (deine Triangulations-Idee).
- * @param {Array<object>} devicesToGraph - Array von {name, color, history: [...]}
- * @returns {string} - Ein vollständiger <svg>-String.
+ * V9: Generiert den globalen Zeitstrahl-Graphen (logisch fast identisch zu V8)
  */
 function generateTimelineGraph(devicesToGraph, globalScanInfo) {
     if (!devicesToGraph || devicesToGraph.length === 0) {
         return `<p class="error-message">Keine Geräte zum Zeichnen ausgewählt.</p>`;
     }
 
-    // 1. SVG-Dimensionen (größer als Sparkline)
-    const width = 800;
-    const height = 400;
-    const padding = 50; // Mehr Platz für Achsen
-    const legendWidth = 200; // Platz rechts für die Legende
+    const width = 800, height = 400, padding = 50, legendWidth = 200;
     const viewWidth = width + padding * 2 + legendWidth;
     const viewHeight = height + padding * 2;
 
-    // 2. Globale Grenzen finden
-    let globalMinRssi = -40;
-    let globalMaxRssi = -100;
-    // V8-ARCHITEKTUR-HINWEIS: Wir verwenden die globalen Scan-Zeiten,
-    // damit alle Graphen dieselbe X-Achse haben (Regel 1).
+    let globalMinRssi = -40, globalMaxRssi = -100;
     const globalMinTime = new Date(globalScanInfo.scanStarted).getTime();
     const globalMaxTime = new Date(globalScanInfo.scanEnded).getTime();
     
-    // Finde min/max RSSI über *alle* ausgewählten Geräte
     for (const device of devicesToGraph) {
         for (const event of device.history) {
             const rssi = event.r;
@@ -195,26 +172,22 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
         }
     }
     
-    // Puffer
-    globalMinRssi = Math.min(-30, globalMinRssi + 10); // z.B. -30
-    globalMaxRssi = Math.max(-110, globalMaxRssi - 10); // z.B. -110
+    globalMinRssi = Math.min(-30, globalMinRssi + 10);
+    globalMaxRssi = Math.max(-110, globalMaxRssi - 10);
 
-    const timeRange = globalMaxTime - globalMinTime;
-    const rssiRange = globalMaxRssi - globalMinRssi; // z.B. (-110 - (-30)) = -80
+    const timeRange = (globalMaxTime - globalMinTime) || 1;
+    const rssiRange = (globalMaxRssi - globalMinRssi) || 1;
 
-    // 3. Skalierungs-Funktionen
     const scaleX = (time) => padding + ((time - globalMinTime) / timeRange) * width;
     const scaleY = (rssi) => padding + ((globalMaxRssi - rssi) / rssiRange) * height;
 
-    // 4. SVG <path>- und <g_legende>-Strings generieren
     let paths = '';
     let legend = '<g class="timeline-legend">';
     
     devicesToGraph.forEach((device, index) => {
         const { name, color, history } = device;
-        if (history.length < 2) return; // Kann keine Linie zeichnen
+        if (history.length < 2) return; 
 
-        // Wichtig: Daten müssen für <path> nach Zeit sortiert sein (sollten sie sein)
         const sortedHistory = history.map(e => ({ time: new Date(e.t).getTime(), rssi: e.r }))
                                      .sort((a, b) => a.time - b.time);
 
@@ -225,35 +198,29 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
 
         paths += `<path d="${pathData}" stroke="${color}" class="timeline-line" />`;
         
-        // Legende
+        // Legende (V9-FIX: Kurzer Name, damit es passt)
+        const shortName = (name.length > 20) ? name.substring(0, 18) + '...' : name;
         const legendY = padding + index * 20;
         legend += `<rect x="${width + padding + 15}" y="${legendY}" width="15" height="10" fill="${color}" />`;
-        legend += `<text x="${width + padding + 35}" y="${legendY + 9}" class="timeline-text">${escapeHTML(name)}</text>`;
+        legend += `<text x="${width + padding + 35}" y="${legendY + 9}" class="timeline-text">${escapeHTML(shortName)}</text>`;
     });
     legend += '</g>';
 
-    // 5. Achsen generieren
     const startTime = new Date(globalMinTime).toLocaleTimeString();
     const endTime = new Date(globalMaxTime).toLocaleTimeString();
     let axes = `
-        <!-- Y-Achse (RSSI) -->
         <text class="timeline-text" x="${padding - 10}" y="${padding + 5}" text-anchor="end">${globalMinRssi} dBm</text>
         <text class="timeline-text" x="${padding - 10}" y="${padding + height}" text-anchor="end">${globalMaxRssi} dBm</text>
         <line class="timeline-axis solid" x1="${padding}" y1="${padding}" x2="${padding}" y2="${padding + height}" />
-        
-        <!-- Y-Achse Gitter (Hilfslinien) -->
         <line class="timeline-axis" x1="${padding}" y1="${scaleY(-70)}" x2="${padding + width}" y2="${scaleY(-70)}" />
         <text class="timeline-text" x="${padding - 10}" y="${scaleY(-70) + 3}" text-anchor="end">-70</text>
         <line class="timeline-axis" x1="${padding}" y1="${scaleY(-85)}" x2="${padding + width}" y2="${scaleY(-85)}" />
         <text class="timeline-text" x="${padding - 10}" y="${scaleY(-85) + 3}" text-anchor="end">-85</text>
-
-        <!-- X-Achse (Zeit) -->
         <text class="timeline-text" x="${padding}" y="${viewHeight - 15}" text-anchor="start">${startTime}</text>
         <text class="timeline-text" x="${padding + width}" y="${viewHeight - 15}" text-anchor="end">${endTime}</text>
         <line class="timeline-axis solid" x1="${padding}" y1="${padding + height}" x2="${padding + width}" y2="${padding + height}" />
     `;
 
-    // 6. SVG-String zusammenbauen
     return `
         <svg class="timeline-graph" viewBox="0 0 ${viewWidth} ${viewHeight}" preserveAspectRatio="xMidYMid meet">
             ${axes}
@@ -264,19 +231,26 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
 }
 
 
-// --- V7: Detail- und Analysefunktionen (angepasst für V8) ---
+// --- V7/V9: Detail- und Analysefunktionen ---
 
 /**
- * V8: Haupt-Analysefunktion (erweitert, um V8-Liste zu füllen)
- * @param {string | null} activeCardId - Die ID der Karte, die aufgeklappt bleiben soll.
+ * V9: Haupt-Analysefunktion (V8-Controls-Parameter entfernt)
  */
-function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v8ControlsElement, activeCardId = null) {
-    if (!Array.isArray(devicesArray)) { /* ... Validierung ... */ }
-    if (devicesArray.length === 0) { /* ... Validierung ... */ }
+function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9ControlsElement, activeCardId = null) {
+    // V9-ARCHITEKTUR-HINWEIS:
+    // Wir leeren 'currentStats' und befüllen es neu.
+    // 'currentStats' wird vom V9-Graph-Button verwendet (Regel 1).
+    currentStats = []; 
+    
+    if (!Array.isArray(devicesArray) || devicesArray.length === 0) {
+        resultsContainer.innerHTML = '<p>Logdatei enthält 0 Geräte.</p>';
+        headerElement.innerHTML = '';
+        v9ControlsElement.innerHTML = '<p><i>Lade eine Datei...</i></p>';
+        return;
+    }
 
     const mapping = loadMapping();
     const stats = [];
-    const mappedDevicesForV8 = []; // V8
 
     for (const device of devicesArray) {
         if (!device || !device.id || !Array.isArray(device.rssiHistory)) continue;
@@ -292,22 +266,14 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v8Cont
             }
         } else { maxRssi = null; }
         const avgRssi = (count > 0) ? (rssiSum / count).toFixed(2) : null;
-        
-        const deviceStats = { id: device.id, name: device.name || "[Unbenannt]", count, avgRssi, maxRssi };
-        stats.push(deviceStats);
-        
-        // V8: Finde gemappte Geräte für die V8-Liste
-        const mappedName = mapping[device.id];
-        if (mappedName) {
-            mappedDevicesForV8.push({ ...deviceStats, mappedName });
-        }
+        stats.push({ id: device.id, name: device.name || "[Unbenannt]", count, avgRssi, maxRssi });
     }
 
     // V6: Sortieren nach "Redseeligkeit"
     stats.sort((a, b) => b.count - a.count);
     
-    // V8: Sortiere V8-Liste auch (konsistent)
-    mappedDevicesForV8.sort((a, b) => b.count - a.count);
+    // V9: Globale Statistik-Liste für V9-Graphen füllen
+    currentStats = stats; 
 
     // V7: Header-Text
     headerElement.innerHTML = `<p>Analyse von <strong>${devicesArray.length}</strong> Geräten. (Sortiert nach "Redseeligkeit". Klicken für Details.)</p>`;
@@ -322,7 +288,6 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v8Cont
         const isActive = (device.id === activeCardId);
         const activeClass = isActive ? 'active' : '';
         const cardActiveClass = isActive ? 'details-active' : '';
-
         htmlOutput += `
             <div class="device-card ${cardActiveClass}" data-device-id="${device.id}">
                 <div class="card-clickable-area" role="button" tabindex="0" aria-expanded="${isActive}">
@@ -361,8 +326,8 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v8Cont
     }
     resultsContainer.innerHTML = htmlOutput;
     
-    // V8: Fülle die V8-Checkbox-Liste
-    populateV8Controls(mappedDevicesForV8, v8ControlsElement);
+    // V9: V8-Controls (populateV8Controls) wird nicht mehr benötigt.
+    // Der Button liest 'currentStats' direkt.
 }
 
 /**
@@ -390,10 +355,10 @@ function escapeHTML(str) {
     return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
 }
 
-// --- V1/V2/V5/V6/V7: Haupt-Event-Listener ---
+// --- V1-V9: Haupt-Event-Listener ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // V8: Alle UI-Elemente holen
+    // V9: Alle UI-Elemente holen
     const fileInput = document.getElementById('jsonUpload');
     const outputElement = document.getElementById('output');
     const resultsElement = document.getElementById('analysis-results');
@@ -401,61 +366,68 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveButton = document.getElementById('saveMappingBtn');
     const clearButton = document.getElementById('clearMappingBtn');
     
-    // V8-Elemente
-    const v8Container = document.getElementById('v8-container');
-    const v8ControlsElement = document.getElementById('v8-controls');
-    const v8GenerateBtn = document.getElementById('v8-generateBtn');
-    const v8GraphContainer = document.getElementById('v8-graph-container');
+    // V9-Elemente (ersetzen V8)
+    const v9ControlsElement = document.getElementById('v9-controls-simple');
+    const v9GenerateBtn = document.getElementById('v9-generateBtn');
+    const v9GraphContainer = document.getElementById('v9-graph-container');
+    const v9TopNSelect = document.getElementById('v9-top-n-select');
 
-    if (!fileInput || !outputElement || !resultsElement || !saveButton || !clearButton || !headerElement || !v8Container || !v8ControlsElement || !v8GenerateBtn || !v8GraphContainer) {
+    if (!fileInput || !outputElement || !resultsElement || !saveButton || !clearButton || !headerElement || !v9ControlsElement || !v9GenerateBtn || !v9GraphContainer || !v9TopNSelect) {
         console.error("Kritischer Fehler: UI-Elemente wurden nicht im DOM gefunden.");
-        if(outputElement) outputElement.textContent = "UI-Initialisierungsfehler (V8).";
+        if(outputElement) outputElement.textContent = "UI-Initialisierungsfehler (V9).";
         return;
     }
 
-    // V5: Listener für Speichern (angepasst für V8)
+    // V5/V9: Listener für Speichern
     saveButton.addEventListener('click', () => {
-        saveMapping(resultsElement, outputElement, headerElement, v8ControlsElement);
+        saveMapping(resultsElement, outputElement, headerElement);
     });
 
-    // V6: Listener für Löschen (angepasst für V8)
+    // V6/V9: Listener für Löschen
     clearButton.addEventListener('click', () => {
-        clearMapping(resultsElement, outputElement, headerElement, v8ControlsElement);
+        clearMapping(resultsElement, outputElement, headerElement, v9ControlsElement, v9GraphContainer);
     });
     
-    // V8: Listener für globalen Graph-Button
-    v8GenerateBtn.addEventListener('click', () => {
-        if (!currentLogData || !currentLogData.scanInfo) {
-            v8GraphContainer.innerHTML = '<p class="error-message">Bitte zuerst eine Log-Datei laden.</p>';
+    // V9: Listener für globalen Graph-Button
+    v9GenerateBtn.addEventListener('click', () => {
+        if (!currentLogData || !currentLogData.scanInfo || currentStats.length === 0) {
+            v9GraphContainer.innerHTML = '<p class="error-message">Bitte zuerst eine Log-Datei laden (und analysieren).</p>';
             return;
         }
         
-        const checkedBoxes = v8ControlsElement.querySelectorAll('.v8-device-toggle:checked');
-        if (checkedBoxes.length === 0) {
-            v8GraphContainer.innerHTML = '<p class="error-message">Keine Geräte ausgewählt. Bitte mappen und auswählen.</p>';
+        const topN = parseInt(v9TopNSelect.value, 10) || 6;
+        if (topN < 2) {
+            v9GraphContainer.innerHTML = '<p class="error-message">Bitte mindestens 2 Geräte auswählen.</p>';
             return;
         }
 
-        outputElement.textContent += `\n[V8] Generiere globalen Graphen für ${checkedBoxes.length} Geräte...`;
-        v8GraphContainer.innerHTML = '<p>Generiere Graph...</p>';
-
+        outputElement.textContent += `\n[V9] Generiere globalen Graphen für die Top ${topN} Geräte...`;
+        v9GraphContainer.innerHTML = '<p>Generiere Graph...</p>';
+        
+        // V9: Nimm die Top N aus der globalen 'currentStats'-Liste
+        const topNDevicesStats = currentStats.slice(0, topN);
+        const mapping = loadMapping();
         const devicesToGraph = [];
-        checkedBoxes.forEach(box => {
-            const deviceId = box.value;
-            const fullDeviceData = currentLogData.devices.find(d => d.id === deviceId);
+
+        topNDevicesStats.forEach((deviceStats, index) => {
+            const fullDeviceData = currentLogData.devices.find(d => d.id === deviceStats.id);
+            const mappedName = mapping[deviceStats.id];
+            // V9: Nutze Mapping-Name, sonst Geräte-Name, sonst ID
+            const displayName = mappedName || deviceStats.name || deviceStats.id;
+            
             if (fullDeviceData) {
                 devicesToGraph.push({
-                    id: deviceId,
-                    name: box.dataset.name,
-                    color: box.dataset.color,
+                    id: deviceStats.id,
+                    name: displayName,
+                    color: V9_GRAPH_COLORS[index % V9_GRAPH_COLORS.length],
                     history: fullDeviceData.rssiHistory
                 });
             }
         });
 
-        // V8: Aufruf der neuen Graph-Funktion
+        // V8/V9: Aufruf der Graph-Funktion
         const svg = generateTimelineGraph(devicesToGraph, currentLogData.scanInfo);
-        v8GraphContainer.innerHTML = svg;
+        v9GraphContainer.innerHTML = svg;
         outputElement.textContent += ` Fertig.`;
         outputElement.scrollTop = outputElement.scrollHeight;
     });
@@ -482,23 +454,24 @@ document.addEventListener('DOMContentLoaded', () => {
         clickableArea.setAttribute('aria-expanded', detailsPane.classList.contains('active'));
     });
 
-    // V1: Listener für Datei-Upload (angepasst für V8)
+    // V1: Listener für Datei-Upload (angepasst für V9)
     fileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) {
             outputElement.textContent = 'Dateiauswahl abgebrochen.';
             resultsElement.innerHTML = '<p>Bitte lade eine Logdatei...</p>';
             headerElement.innerHTML = '';
-            v8ControlsElement.innerHTML = '<p><i>Lade eine Datei...</i></p>';
-            v8GraphContainer.innerHTML = '';
+            v9GraphContainer.innerHTML = '';
             currentLogData = null;
+            currentStats = []; // V9
             return;
         }
 
         outputElement.textContent = `Lese und parse Datei: ${file.name} ...`;
         resultsElement.innerHTML = `<p>Lese Datei ${file.name}...</p>`;
         headerElement.innerHTML = '';
-        v8GraphContainer.innerHTML = ''; // V8: Alten Graphen löschen
+        v9GraphContainer.innerHTML = '';
+        currentStats = []; // V9
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -507,27 +480,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof currentLogData === 'object' && currentLogData !== null && Array.isArray(currentLogData.devices) && currentLogData.scanInfo) {
                     outputElement.textContent = `Datei: ${file.name}\nStatus: Erfolgreich geparst.\nStruktur: Objekt mit ${currentLogData.devices.length} Geräten gefunden.\nStarte Analyse...`;
                     
-                    // V8: Analysefunktion aufrufen (mit V8-Controls)
-                    analyzeAndDisplay(currentLogData.devices, resultsElement, headerElement, v8ControlsElement, null);
+                    // V9: Analysefunktion aufrufen
+                    analyzeAndDisplay(currentLogData.devices, resultsElement, headerElement, v9ControlsElement, null);
 
-                    outputElement.textContent += "\nAnalyse abgeschlossen. Mapping geladen. V8-Tools bereit.";
+                    outputElement.textContent += "\nAnalyse abgeschlossen. Mapping geladen. V9-Tools bereit.";
                     outputElement.scrollTop = outputElement.scrollHeight;
                 } else {
                     throw new Error("Die JSON-Datei hat nicht die erwartete Struktur. Ein 'devices'-Array und/oder 'scanInfo' wurde nicht gefunden.");
                 }
             } catch (error) {
-                // ... Fehlerbehandlung ...
                 console.error('Fehler beim Parsen oder Validieren:', error);
                 const errorMsg = `Fehler: ${error.message}`;
                 outputElement.textContent = errorMsg;
                 resultsElement.innerHTML = `<p class="error-message"><strong>Lade-Fehler:</strong><br>${escapeHTML(errorMsg)}</p>`;
                 headerElement.innerHTML = '';
-                v8ControlsElement.innerHTML = `<p class="error-message"><i>Laden fehlgeschlagen.</i></p>`;
-                v8GraphContainer.innerHTML = '';
+                v9GraphContainer.innerHTML = '';
                 currentLogData = null;
+                currentStats = [];
             }
         };
-        reader.onerror = (e) => { /* ... Fehlerbehandlung ... */ };
+        reader.onerror = (e) => { 
+            // V9: Error Handling
+            console.error('Fehler beim Lesen der Datei:', e);
+            const errorMsg = `Fehler: Die Datei konnte nicht gelesen werden. Details: ${e.message}`;
+            outputElement.textContent = errorMsg;
+            resultsElement.innerHTML = `<p class="error-message"><strong>Lade-Fehler:</strong><br>${escapeHTML(errorMsg)}</p>`;
+            headerElement.innerHTML = '';
+            v9GraphContainer.innerHTML = '';
+            currentLogData = null;
+            currentStats = [];
+        };
         reader.readAsText(file);
     });
-}); 
+});
