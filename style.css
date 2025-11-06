@@ -8,7 +8,7 @@
     --border-color: #414868;
     --accent-color: #7aa2f7;
     --accent-hover: #9ece6a; /* Grün für "Erfolg" */
-    --danger-color: #f7768e; /* Rot für "Fehler" */
+    --danger-color: #f7768e; /* Rot für "Gefahr" */
     --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: 'Consolas', 'Menlo', 'Courier New', monospace;
 }
@@ -24,7 +24,7 @@ body {
 }
 
 .container {
-    max-width: 1000px; /* V5: Zurück auf 1000px, da Karten responsiv sind */
+    max-width: 1000px;
     margin: 0 auto;
     padding: 20px;
     background-color: var(--card-color);
@@ -59,30 +59,38 @@ input[type="file"] { display: none; }
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin-bottom: 10px; /* V5: Platz nach unten */
+    margin-bottom: 10px;
 }
-
 .upload-label:hover { background-color: var(--accent-hover); }
 
-/*
-  V5-HINZUGEFÜGT: Styling für den Speicher-Button
-*/
+
+/* V5: Action-Button (Speichern) */
 .action-button {
-    display: block; /* Volle Breite */
+    display: block;
     width: 100%;
     padding: 12px 20px;
     font-size: 1rem;
     font-weight: bold;
     color: var(--bg-color);
-    background-color: var(--accent-hover); /* Grüner "Speichern"-Button */
+    background-color: var(--accent-hover);
     border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
-    margin-bottom: 20px;
+    margin-bottom: 10px; /* V6: Abstand zwischen Buttons */
 }
 .action-button:hover {
     background-color: #b9f27c;
+}
+
+/*
+  V6-HINZUGEFÜGT: Styling für den "Gefahr"-Button (Löschen)
+*/
+.action-button.danger {
+    background-color: var(--danger-color);
+}
+.action-button.danger:hover {
+    background-color: #ff9eaf; /* Helleres Rot */
 }
 
 
@@ -102,62 +110,55 @@ input[type="file"] { display: none; }
     color: #c0caf5;
 }
 
-/*
-  V5-ÄNDERUNG: Table-Styling (V4) entfernt und durch Card-Styling ersetzt.
-  Dies ist der Kern des Bugfixes für mobile Geräte.
-*/
+/* V5: Card-Layout Basis */
 #analysis-results {
-    /* V5: Entfernt Hintergrund und Rand, da die Karten ihn haben */
     padding: 0; 
 }
 
 #analysis-results p {
     margin-bottom: 10px;
-    padding: 15px; /* V5: Falls Text (z.B. Lade-Text) da ist */
+    padding: 15px;
     background-color: var(--bg-color);
     border-radius: 5px;
 }
 
 .device-card {
-    background-color: var(--bg-color); /* Dunkler als Container-Hintergrund */
+    background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     margin-bottom: 15px;
-    overflow: hidden; /* Stellt sicher, dass Ränder eingehalten werden */
+    overflow: hidden;
 }
 
 .card-row {
     display: flex;
-    flex-wrap: wrap; /* Erlaubt Umbruch auf sehr kleinen Bildschirmen */
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     padding: 12px 15px;
     border-bottom: 1px solid var(--border-color);
     line-height: 1.4;
 }
-
-.device-card .card-row:last-child {
-    border-bottom: none;
-}
+.device-card .card-row:last-child { border-bottom: none; }
 
 .card-label {
     font-weight: bold;
     color: var(--fg-color);
-    flex-basis: 120px; /* Feste Basis für Labels */
+    flex-basis: 120px;
     margin-right: 10px;
 }
 
 .card-value {
-    flex-basis: 60%; /* Nimmt den Rest des Platzes ein */
+    flex-basis: 60%;
     flex-grow: 1;
-    word-break: break-all; /* Wichtig für lange IDs */
+    word-break: break-all;
 }
 
-/* Spezielles Styling für bestimmte Werte */
+/* Styling für Werte (V5) */
 .card-value.mono {
     font-family: var(--font-mono);
     font-size: 0.9rem;
-    color: var(--accent-color); /* Hebt IDs und Zahlen hervor */
+    color: var(--accent-color);
 }
 .card-value.name {
     font-weight: bold;
@@ -165,17 +166,30 @@ input[type="file"] { display: none; }
 }
 .card-value.rssi-max {
     font-weight: bold;
-    color: var(--accent-hover); /* Bester Wert in grün */
+    color: var(--accent-hover);
 }
 
-/* V5: Styling für das Mapping-Inputfeld */
+/*
+  V6-HINZUGEFÜGT: Visuelle Hervorhebung für gemappte Namen (Regel 2)
+*/
+.card-value.name.is-mapped {
+    color: var(--accent-hover); /* Grün */
+}
+.card-value.name.is-mapped::before {
+    content: '✔ '; /* Zeigt "gemappt" an */
+    color: var(--accent-hover);
+    font-weight: bold;
+    margin-right: 4px;
+}
+
+
+/* V5: Mapping-Input-Styling */
 .mapping-row {
-    background-color: var(--card-color); /* Hebt die Eingabezeile hervor */
-    align-items: stretch;
+    background-color: var(--card-color);
 }
 .mapping-row .card-label {
     color: var(--accent-hover);
-    padding-top: 5px; /* Bessere vertikale Ausrichtung */
+    padding-top: 5px;
 }
 .mapping-input {
     flex-basis: 60%;
@@ -194,8 +208,7 @@ input[type="file"] { display: none; }
     box-shadow: 0 0 5px var(--accent-color);
 }
 
-
-/* V4: Styling für Fehlermeldungen */
+/* V4: Error-Styling */
 .error-message {
     color: var(--danger-color);
     font-family: var(--font-mono);
@@ -216,4 +229,4 @@ footer a {
 }
 footer a:hover {
     color: var(--accent-hover);
-}
+} 
