@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeaconBay Analyzer</title>
+    
+    <!-- V1: CSS wird aus einer externen Datei geladen -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!--
+      V1: JS wird als Modul geladen. Das 'defer'-Attribut sorgt dafür,
+      dass das Skript erst nach dem Parsen des HTML ausgeführt wird,
+      aber noch vor 'DOMContentLoaded'. Unser 'DOMContentLoaded'-Listener
+      im JS-Code stellt sicher, dass wir trotzdem auf das DOM warten.
+    -->
+    <script type="module" src="app.js" defer></script>
+</head>
+<body>
+
+    <div class="container">
+        <h1>BeaconBay Analyzer</h1>
+        <p>Lade eine <code>beaconbay_log_... .json</code> Datei, um die Daten zu analysieren und zu visualisieren.</p>
+
+        <!-- V1: Dateiupload-Steuerelement -->
+        <label for="jsonUpload" class="upload-label">JSON-Logdatei auswählen</label>
+        <input type="file" id="jsonUpload" accept=".json">
+
+        <!-- V1: Rohdaten-Ausgabebereich -->
+        <h2>Rohdaten-Vorschau:</h2>
+        <pre id="output">Hier erscheinen die geladenen JSON-Rohdaten...</pre>
+
+        <!-- V1: Link zurück zu BeaconBay -->
+        <footer>
+            <a href="https://nullkommaneun.github.io/BeaconBay/" target="_blank" rel="noopener noreferrer">Zurück zu BeaconBay</a>
+        </footer>
+    </div>
+
+</body>
+</html>
+
+
+ 
