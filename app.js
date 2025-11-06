@@ -1,19 +1,26 @@
-// V1: Haupt-App-Logik, ausgelagert aus der index.html
+// V2: Haupt-App-Logik (mit JSON-Parsing)
+
+/**
+ * ARCHITEKTUR-HINWEIS (V2):
+ * Wir deklarieren eine Variable im Modul-Scope, um die geparsten
+ * Daten zu speichern. Dies ist unser "State" (Zustand).
+ * Spätere Analysefunktionen können auf diese Variable zugreifen.
+ */
+let currentLogData = null;
 
 /**
  * ARCHITEKTUR-HINWEIS (Regel 1):
- * Wir verwenden 'DOMContentLoaded', um sicherzustellen, dass das Skript erst dann
- * ausgeführt wird, wenn das gesamte HTML-Dokument geladen und geparst wurde.
- * Das 'defer'-Attribut im <script>-Tag der HTML-Datei arbeitet gut damit zusammen.
+ * Wir warten auf 'DOMContentLoaded', um sicherzustellen, dass das DOM vollständig
+ * geladen ist, bevor wir versuchen, auf Elemente zuzugreifen.
  */
 document.addEventListener('DOMContentLoaded', () => {
     
-    // V1-FIX: Wir "cachen" die DOM-Elemente in Konstanten.
+    // V1-FIX: DOM-Elemente cachen
     const fileInput = document.getElementById('jsonUpload');
     const outputElement = document.getElementById('output');
 
     if (!fileInput || !outputElement) {
-        // Wichtige Defensivprogrammierung: Sicherstellen, dass die Elemente existieren.
+        // Defensivprogrammierung
         console.error("Kritischer Fehler: UI-Elemente (jsonUpload oder output) wurden nicht im DOM gefunden.");
         return;
     }
@@ -22,49 +29,85 @@ document.addEventListener('DOMContentLoaded', () => {
      * V1: Event-Listener für das 'change'-Ereignis am Dateieingabefeld.
      */
     fileInput.addEventListener('change', (event) => {
-        // 'event.target.files' ist eine FileList. Wir nehmen die erste Datei (Index 0).
         const file = event.target.files[0];
 
         if (!file) {
-            // Fall: Benutzer bricht den Dialog ab.
             outputElement.textContent = 'Dateiauswahl abgebrochen.';
+            currentLogData = null; // Zustand zurücksetzen
             return;
         }
 
-        // Status für den Benutzer aktualisieren
-        outputElement.textContent = `Lese Datei: ${file.name} ...`;
+        // V2: Status-Update angepasst
+        outputElement.textContent = `Lese und parse Datei: ${file.name} ...`;
 
-        /**
-         * ARCHITEKTUR-HINWEIS (Regel 2: Proaktives Mitdenken):
-         * Wir verwenden die asynchrone 'FileReader' API. Dies ist *entscheidend*,
-         * um das Einfrieren der UI bei großen Logdateien zu verhindern.
-         */
         const reader = new FileReader();
 
         /**
-         * V1: 'onload' ist der Callback, der ausgeführt wird, wenn das Lesen
-         * erfolgreich abgeschlossen wurde.
+         * V2: Der 'onload'-Handler ist jetzt für das Parsen verantwortlich.
          */
         reader.onload = (e) => {
-            // e.target.result enthält den Textinhalt der Datei.
             const fileContent = e.target.result;
 
-            // V1-Anforderung: Log in der Konsole.
-            console.log('JSON-Datei erfolgreich geladen (Rohdaten):', fileContent);
+            /**
+             * V2: JSON-Parsing.
+             * ARCHITEKTUR-HINWEIS (Regel 1 & 2):
+             * Wir *müssen* JSON.parse() in einen try...catch-Block einschließen.
+             * Wenn der Benutzer eine Datei hochlädt, die kein gültiges JSON ist
+             * (z.B. eine .txt oder .jpg Datei), würde die App sonst abstürzen.
+             */
+            try {
+                /**
+                 * PROAKTIVER HINWEIS (Regel 2: Performance):
+                 * JSON.parse() ist eine synchrone, blockierende Operation.
+                 * Bei einer 200MB-Logdatei *wird* dies die UI (den Browser-Tab) 
+                 * für einige Sekunden einfrieren.
+                 * Für V2 akzeptieren wir das, für V3/V4 müssen wir über Web Worker
+                 * (parallele Threads im Browser) nachdenken, um das zu umgehen.
+                 */
+                currentLogData = JSON.parse(fileContent);
 
-            // V1-Anforderung: Anzeige im <pre>-Element.
-            outputElement.textContent = fileContent;
+                // V2-Anforderung: Log in der Konsole (jetzt als Objekt).
+                console.log('Datei erfolgreich geparst (Objekt):', currentLogData);
+
+                // V2-Anforderung: Formatiertes JSON im <pre>-Element anzeigen.
+                // JSON.stringify(value, replacer, space)
+                // 'null' bedeutet, alle Eigenschaften werden verwendet.
+                // '2' bedeutet, 2 Leerzeichen für die Einrückung (Pretty Print).
+                // Dies bestätigt, dass wir gültige Daten verarbeitet haben.
+                const formattedJson = JSON.stringify(currentLogData, null, 2);
+
+                outputElement.textContent = formattedJson;
+
+                // TODO (Nächster Schritt): Analysefunktion auf 'currentLogData' aufrufen.
+                // analyzeData(currentLogData);
+
+            } catch (error) {
+                // V2: Fehlerbehandlung, falls das JSON ungültig ist.
+                console.error('Fehler beim Parsen des JSON:', error);
+                outputElement.textContent = `Fehler: Die Datei ist kein gültiges JSON.\n\nDetails: ${error.message}`;
+                currentLogData = null; // Zustand zurücksetzen
+            }
         };
 
         /**
-         * V1-FIX: Fehlerbehandlung ist kein Luxus, sondern notwendig.
+         * V1: Fehlerbehandlung beim Lesen der Datei.
          */
         reader.onerror = (e) => {
             console.error('Fehler beim Lesen der Datei:', e);
             outputElement.textContent = `Fehler: Die Datei konnte nicht gelesen werden.\n\nDetails: ${e.message}`;
+            currentLogData = null; // Zustand zurücksetzen
         };
 
         // V1: Startet den Lesevorgang.
         reader.readAsText(file);
     });
-}); 
+});
+
+/**
+ * V2: Platzhalter für zukünftige Analysefunktionen.
+ * In V3 werden wir hier die Logik implementieren.
+ *
+ * function analyzeData(data) {
+ * console.log('Analysiere Daten...', data);
+ * }
+ */
