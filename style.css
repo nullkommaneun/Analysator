@@ -1,3 +1,7 @@
+/* * BeaconBay Analysator CSS
+ * Version: V11 (Karten-Upload Korrelation)
+ */
+
 /* V1: Basis-Theme */
 :root {
     --bg-color: #1a1b26;
@@ -12,7 +16,7 @@
     --svg-stroke: #7aa2f7;
     --svg-text: #a9b1d6;
     
-    /* V8: Farbpalette */
+    /* V8: Farbpalette für den Graphen */
     --color-1: #f7768e; /* Rot */
     --color-2: #9ece6a; /* Grün */
     --color-3: #7aa2f7; /* Blau */
@@ -22,9 +26,10 @@
     --color-7: #e0af68; /* Ocker */
     --color-8: #c0caf5; /* Hellblau/Weiß */
     --color-9: #f7cbf7; /* Pink */
-    --color-10: #a9b1d6; /* Grau (Fallback) */
+    --color-10: #a9b1d6; /* Grau */
 }
 
+/* V1: Globales Styling */
 * {
     margin: 0;
     padding: 0;
@@ -64,7 +69,7 @@ h2 {
 
 /* V1: Upload-Button */
 input[type="file"] {
-    display: none;
+    display: none; /* Verstecken das Standard-Input-Feld */
 }
 .upload-label {
     display: inline-block;
@@ -76,6 +81,7 @@ input[type="file"] {
     cursor: pointer;
     transition: background-color 0.3s ease;
     margin-bottom: 10px;
+    text-align: center;
 }
 .upload-label:hover {
     background-color: var(--accent-hover);
@@ -97,15 +103,16 @@ input[type="file"] {
     margin-bottom: 10px;
 }
 .action-button:hover {
-    background-color: #b9f27c;
+    background-color: #b9f27c; /* Helleres Grün */
 }
 
 .action-button.danger {
     background-color: var(--danger-color);
 }
 .action-button.danger:hover {
-    background-color: #ff9eaf;
+    background-color: #ff9eaf; /* Helleres Rot */
 }
+
 
 /* V9: Zeitstrahl-Analyse */
 .v9-container {
@@ -131,6 +138,7 @@ input[type="file"] {
 }
 
 /* V9: Intelligenter Filter */
+/* V9.1 Fix: Styling für ID statt Klasse */
 #v9-controls-simple {
     display: flex;
     align-items: center;
@@ -165,9 +173,9 @@ input[type="file"] {
 }
 .timeline-graph {
     width: 100%;
-    min-width: 600px;
+    min-width: 600px; /* Stellt sicher, dass der Graph nicht zu klein wird */
     height: auto;
-    background-color: #16161e;
+    background-color: #16161e; /* Etwas dunkler für Kontrast */
     border-radius: 5px;
     border: 1px solid var(--border-color);
 }
@@ -191,12 +199,11 @@ input[type="file"] {
     stroke: var(--fg-color);
 }
 
-/*
-  V10-HINZUGEFÜGT: Export-Controls
-*/
+/* V10: Export-Controls */
 .v9-export-controls {
     display: none; /* Standardmäßig versteckt */
     flex-direction: row; /* Nebeneinander */
+    flex-wrap: wrap; /* Auf Mobilgeräten umbrechen */
     gap: 10px;
     margin-top: 20px;
     border-top: 1px dashed var(--border-color);
@@ -206,7 +213,7 @@ input[type="file"] {
     display: flex; /* Wird von JS auf 'flex' gesetzt */
 }
 .export-button {
-    flex-grow: 1; /* Beide Buttons gleich breit */
+    flex: 1 1 200px; /* Flex-grow, flex-shrink, flex-basis */
     padding: 10px 15px;
     font-size: 0.9rem;
     font-weight: bold;
@@ -229,6 +236,40 @@ input[type="file"] {
     background-color: #ffb78b; /* Helleres Orange */
 }
 
+/* V11: Karten-Upload Sektion */
+.v11-divider {
+    border: none;
+    border-top: 1px dashed var(--border-color);
+    margin-top: 25px;
+    margin-bottom: 20px;
+}
+.map-upload-label {
+    background-color: var(--color-7); /* Ocker-Farbe */
+}
+.map-upload-label:hover {
+    background-color: #f0c690;
+}
+#v11-map-container {
+    margin-top: 20px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.v11-map-placeholder {
+    font-style: italic;
+    color: var(--border-color);
+}
+#v11-map-container img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+}
+
 
 /* V3: Status-Output */
 #output {
@@ -243,7 +284,7 @@ input[type="file"] {
     word-break: break-all;
     font-family: var(--font-mono);
     font-size: 0.9rem;
-    color: #c0caf5;
+    color: #c0caf5; /* Hellere Schrift für Log */
 }
 
 /* V7: Analyse-Header */
@@ -252,8 +293,12 @@ input[type="file"] {
     font-style: italic;
     color: var(--fg-color);
 }
+#analysis-header p strong {
+    color: var(--accent-hover);
+    font-weight: 600;
+}
 
-/* V5: Card-Layout */
+/* V5: Card-Layout (ersetzt <table>) */
 #analysis-results {
     padding: 0;
 }
@@ -268,23 +313,27 @@ input[type="file"] {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     margin-bottom: 15px;
-    overflow: hidden;
-    transition: box-shadow 0.3s ease;
+    overflow: hidden; /* Für saubere Ecken */
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 .device-card.details-active {
     border-color: var(--accent-color);
     box-shadow: 0 0 10px var(--accent-color);
 }
+
+/* V7: Klickbarer Bereich */
 .card-clickable-area {
     cursor: pointer;
-    outline: none;
+    outline: none; /* Für Barrierefreiheit */
 }
 .card-clickable-area:hover .card-row {
-    background-color: #2a2e42;
+    background-color: #2a2e42; /* Leichter Hover-Effekt */
 }
+
+/* V5: Responsives Karten-Zeilen-Layout */
 .card-row {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* Wichtig für Mobile */
     justify-content: space-between;
     align-items: center;
     padding: 12px 15px;
@@ -298,13 +347,13 @@ input[type="file"] {
 .card-label {
     font-weight: bold;
     color: var(--fg-color);
-    flex-basis: 120px;
+    flex-basis: 120px; /* Feste Breite für das Label */
     margin-right: 10px;
 }
 .card-value {
-    flex-basis: 60%;
+    flex-basis: 60%; /* Nimmt den Rest des Platzes */
     flex-grow: 1;
-    word-break: break-all;
+    word-break: break-all; /* Lange IDs umbrechen */
 }
 .card-value.mono {
     font-family: var(--font-mono);
@@ -319,6 +368,8 @@ input[type="file"] {
     font-weight: bold;
     color: var(--accent-hover);
 }
+
+/* V6: Styling für gemappte Namen */
 .card-value.name.is-mapped {
     color: var(--accent-hover);
 }
@@ -336,7 +387,7 @@ input[type="file"] {
 }
 .mapping-row .card-label {
     color: var(--accent-hover);
-    padding-top: 5px;
+    padding-top: 5px; /* Vertikal zentrieren zum Input-Feld */
 }
 .mapping-input {
     flex-basis: 60%;
@@ -355,11 +406,12 @@ input[type="file"] {
     box-shadow: 0 0 5px var(--accent-color);
 }
 
+
 /* V7: Styling für Detail-Bereich */
 .card-details {
-    display: none;
+    display: none; /* Standardmäßig versteckt */
     padding: 15px;
-    background-color: #16161e;
+    background-color: #16161e; /* Dunklerer Hintergrund für Details */
     border-top: 1px solid var(--border-color);
 }
 .card-details.active {
@@ -380,6 +432,8 @@ input[type="file"] {
     word-break: break-all;
     border: 1px solid var(--border-color);
     margin-bottom: 15px;
+    max-height: 200px;
+    overflow-y: auto;
 }
 
 /* V7: Styling für SVG-Sparkline-Graph */
@@ -428,4 +482,4 @@ footer a {
 }
 footer a:hover {
     color: var(--accent-hover);
-    } 
+                     } 
