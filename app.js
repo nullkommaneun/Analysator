@@ -1,6 +1,4 @@
-// V9.1: Hotfix für UI-Initialisierungsfehler
-// Die Logik bleibt identisch zu V9, da der Fehler im HTML/CSS lag.
-// Ich sende sie der Vollständigkeit halber als V9.1.
+// V9.2: Hotfix für "avgRssi is not defined" (Scoping-Fehler)
 
 // V5: Globaler State
 let currentLogData = null;
@@ -55,8 +53,7 @@ function saveMapping(resultsContainer, outputElement, headerElement) {
              const activeCard = resultsContainer.querySelector('.device-card.details-active');
              const activeId = activeCard ? activeCard.dataset.deviceId : null;
              
-             // V9.1-FIX: Stelle sicher, dass das 4. Argument (v9ControlsElement)
-             // beim Aufruf korrekt übergeben wird, auch wenn es hier nicht direkt genutzt wird.
+             // V9.2: Holen des DOM-Elements, das jetzt (dank V9.1) existiert
              const v9ControlsElement = document.getElementById('v9-controls-simple'); 
              
              analyzeAndDisplay(currentLogData.devices, resultsContainer, headerElement, v9ControlsElement, activeId);
@@ -80,10 +77,16 @@ function clearMapping(resultsContainer, outputElement, headerElement, v9Controls
             headerElement.innerHTML = '';
         }
         
-        // V9: V9-Bereich zurücksetzen (unverändert)
-        // (v9ControlsElement ist bereits das korrekte Element aus dem DOM-Listener)
-        v9ControlsElement.innerHTML = '<p><i>Lade eine Datei, um Geräte zu mappen.</i></p>'; // V9.1-Fehler: v9ControlsElement ist hier das DIV, nicht das Label
-        v9GraphContainer.innerHTML = '';
+        // V9.2: Setze den *Inhalt* des V9-Control-Containers zurück
+        if (v9ControlsElement) {
+            v9ControlsElement.innerHTML = `
+                <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
+                <input type="number" id="v9-top-n-select" value="6" min="2" max="20" disabled />
+            `;
+        }
+        if (v9GraphContainer) {
+            v9GraphContainer.innerHTML = '';
+        }
 
     } catch (error)
     {
@@ -93,7 +96,7 @@ function clearMapping(resultsContainer, outputElement, headerElement, v9Controls
 }
 
 // --- V7: Detail-Funktionen (Sparkline & Adverts) ---
-// (Unverändert von V9)
+// (Unverändert)
 function formatAdvertisements(adverts) {
     if (!adverts || adverts.length === 0) {
         return '<pre class="advert-list">Keine Advertisement-Daten verfügbar.</pre>';
@@ -131,7 +134,6 @@ function generateSparkline(rssiHistory) {
     }
     const startTime = new Date(minTime).toLocaleTimeString();
     const endTime = new Date(maxTime).toLocaleTimeString();
-    // (Restliche SVG-Generierung unverändert)
     return `
         <svg class="rssi-sparkline" viewBox="0 0 ${viewWidth} ${viewHeight}" preserveAspectRatio="xMidYMid meet">
             <text class="spark-text" x="5" y="${padding + 5}" alignment-baseline="hanging">${minRssi} dBm</text>
@@ -146,20 +148,17 @@ function generateSparkline(rssiHistory) {
 }
 
 // --- V8/V9: Globale Graph-Funktion ---
-// (Unverändert von V9)
+// (Unverändert)
 function generateTimelineGraph(devicesToGraph, globalScanInfo) {
     if (!devicesToGraph || devicesToGraph.length === 0) {
         return `<p class="error-message">Keine Geräte zum Zeichnen ausgewählt.</p>`;
     }
-
     const width = 800, height = 400, padding = 50, legendWidth = 200;
     const viewWidth = width + padding * 2 + legendWidth;
     const viewHeight = height + padding * 2;
-
     let globalMinRssi = -40, globalMaxRssi = -100;
     const globalMinTime = new Date(globalScanInfo.scanStarted).getTime();
     const globalMaxTime = new Date(globalScanInfo.scanEnded).getTime();
-    
     for (const device of devicesToGraph) {
         for (const event of device.history) {
             const rssi = event.r;
@@ -167,40 +166,30 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
             if (rssi < globalMaxRssi) globalMaxRssi = rssi;
         }
     }
-    
     globalMinRssi = Math.min(-30, globalMinRssi + 10);
     globalMaxRssi = Math.max(-110, globalMaxRssi - 10);
-
     const timeRange = (globalMaxTime - globalMinTime) || 1;
     const rssiRange = (globalMaxRssi - globalMinRssi) || 1;
-
     const scaleX = (time) => padding + ((time - minTime) / timeRange) * width;
     const scaleY = (rssi) => padding + ((maxRssi - rssi) / rssiRange) * height;
-
     let paths = '';
     let legend = '<g class="timeline-legend">';
-    
     devicesToGraph.forEach((device, index) => {
         const { name, color, history } = device;
         if (history.length < 2) return; 
-
         const sortedHistory = history.map(e => ({ time: new Date(e.t).getTime(), rssi: e.r }))
                                      .sort((a, b) => a.time - b.time);
-
         let pathData = "M" + scaleX(sortedHistory[0].time) + " " + scaleY(sortedHistory[0].rssi);
         for (let i = 1; i < sortedHistory.length; i++) {
             pathData += ` L${scaleX(sortedHistory[i].time)} ${scaleY(sortedHistory[i].rssi)}`;
         }
-
         paths += `<path d="${pathData}" stroke="${color}" class="timeline-line" />`;
-        
         const shortName = (name.length > 20) ? name.substring(0, 18) + '...' : name;
         const legendY = padding + index * 20;
         legend += `<rect x="${width + padding + 15}" y="${legendY}" width="15" height="10" fill="${color}" />`;
         legend += `<text x="${width + padding + 35}" y="${legendY + 9}" class="timeline-text">${escapeHTML(shortName)}</text>`;
     });
     legend += '</g>';
-
     const startTime = new Date(globalMinTime).toLocaleTimeString();
     const endTime = new Date(globalMaxTime).toLocaleTimeString();
     let axes = `
@@ -215,7 +204,6 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
         <text class="timeline-text" x="${padding + width}" y="${viewHeight - 15}" text-anchor="end">${endTime}</text>
         <line class="timeline-axis solid" x1="${padding}" y1="${padding + height}" x2="${padding + width}" y2="${padding + height}" />
     `;
-
     return `
         <svg class="timeline-graph" viewBox="0 0 ${viewWidth} ${viewHeight}" preserveAspectRatio="xMidYMid meet">
             ${axes}
@@ -226,19 +214,18 @@ function generateTimelineGraph(devicesToGraph, globalScanInfo) {
 }
 
 
-// --- V7/V9: Detail- und Analysefunktionen ---
+// --- V7/V9.2: Detail- und Analysefunktionen (BUGFIX) ---
 
-/**
- * V9: Haupt-Analysefunktion (unverändert von V9)
- */
 function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9ControlsElement, activeCardId = null) {
     currentStats = []; 
     
     if (!Array.isArray(devicesArray) || devicesArray.length === 0) {
         resultsContainer.innerHTML = '<p>Logdatei enthält 0 Geräte.</p>';
         headerElement.innerHTML = '';
-        // V9.1-KORREKTUR: Beim Zurücksetzen den *Inhalt* des V9-Containers ändern, nicht das Element selbst.
-        v9ControlsElement.innerHTML = '<p><i>Lade eine Datei...</i></p>';
+        v9ControlsElement.innerHTML = `
+            <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
+            <input type="number" id="v9-top-n-select" value="6" min="2" max="20" disabled />
+        `;
         return;
     }
 
@@ -250,6 +237,10 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9Cont
         const rssiEvents = device.rssiHistory;
         const count = rssiEvents.length;
         let rssiSum = 0, maxRssi = -Infinity;
+        
+        // V9.2-KORREKTUR: 'avgRssi' *außerhalb* des 'if' deklarieren.
+        let avgRssi = null; 
+
         if (count > 0) {
             for (const event of rssiEvents) {
                 if (typeof event.r === 'number') {
@@ -257,7 +248,14 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9Cont
                     if (event.r > maxRssi) maxRssi = event.r;
                 }
             }
-        } else { maxRssi = null; }
+            // V9.2-KORREKTUR: 'avgRssi' hier *zuweisen*.
+            avgRssi = (rssiSum / count).toFixed(2);
+        } else { 
+            maxRssi = null; 
+            // V9.2: 'avgRssi' bleibt 'null' (was korrekt ist).
+        }
+        
+        // V9.2: Dieser Push funktioniert jetzt immer, da 'avgRssi' immer definiert ist.
         stats.push({ id: device.id, name: device.name || "[Unbenannt]", count, avgRssi, maxRssi });
     }
 
@@ -313,9 +311,7 @@ function analyzeAndDisplay(devicesArray, resultsContainer, headerElement, v9Cont
     }
     resultsContainer.innerHTML = htmlOutput;
     
-    // V9.1-KORREKTUR: Beim *erfolgreichen* Laden, stelle sicher,
-    // dass der V9-Control-Container (der jetzt die ID hat) 
-    // das Label und das Input-Feld anzeigt (falls es durch 'clearMapping' geleert wurde)
+    // V9.2: V9-Control-Container-Inhalt wiederherstellen
     v9ControlsElement.innerHTML = `
         <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
         <input type="number" id="v9-top-n-select" value="6" min="2" max="20" />
@@ -347,10 +343,10 @@ function escapeHTML(str) {
     return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[m]);
 }
 
-// --- V1-V9.1: Haupt-Event-Listener ---
+// --- V1-V9.2: Haupt-Event-Listener ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // V9.1: DOM-Elemente holen
+    // V9.2: DOM-Elemente holen
     const fileInput = document.getElementById('jsonUpload');
     const outputElement = document.getElementById('output');
     const resultsElement = document.getElementById('analysis-results');
@@ -358,21 +354,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveButton = document.getElementById('saveMappingBtn');
     const clearButton = document.getElementById('clearMappingBtn');
     
-    // V9-Elemente
     const v9Container = document.getElementById('v9-container');
-    const v9ControlsElement = document.getElementById('v9-controls-simple'); // V9.1: Diese ID existiert jetzt
+    const v9ControlsElement = document.getElementById('v9-controls-simple'); 
     const v9GenerateBtn = document.getElementById('v9-generateBtn');
     const v9GraphContainer = document.getElementById('v9-graph-container');
-    
-    // V9.1-HINWEIS: 'v9TopNSelect' kann hier nicht geholt werden,
-    // da es von 'analyzeAndDisplay' dynamisch erstellt wird.
-    // Wir holen es *innerhalb* des 'v9GenerateBtn' Click-Handlers.
 
     if (!fileInput || !outputElement || !resultsElement || !saveButton || !clearButton || !headerElement || !v9Container || !v9ControlsElement || !v9GenerateBtn || !v9GraphContainer) {
         console.error("Kritischer Fehler: UI-Elemente wurden nicht im DOM gefunden.");
-        if(outputElement) outputElement.textContent = "UI-Initialisierungsfehler (V9.1).";
+        if(outputElement) outputElement.textContent = "UI-Initialisierungsfehler (V9.2).";
         return;
     }
+    
+    // V9.2: Deaktiviere V9-Controls beim Start
+    v9ControlsElement.innerHTML = `
+        <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
+        <input type="number" id="v9-top-n-select" value="6" min="2" max="20" disabled />
+    `;
 
     // V5/V9: Listener für Speichern
     saveButton.addEventListener('click', () => {
@@ -391,7 +388,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // V9.1-KORREKTUR: Holen des Elements *nachdem* es erstellt wurde.
         const v9TopNSelect = document.getElementById('v9-top-n-select');
         if (!v9TopNSelect) {
             v9GraphContainer.innerHTML = '<p class="error-message">Fehler: Konnte Top-N-Auswahlfeld nicht finden.</p>';
@@ -405,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         outputElement.textContent += `\n[V9] Generiere globalen Graphen für die Top ${topN} Geräte...`;
-        v8GraphContainer.innerHTML = '<p>Generiere Graph...</p>';
+        v9GraphContainer.innerHTML = '<p>Generiere Graph...</p>';
         
         const topNDevicesStats = currentStats.slice(0, topN);
         const mapping = loadMapping();
@@ -454,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clickableArea.setAttribute('aria-expanded', detailsPane.classList.contains('active'));
     });
 
-    // V1: Listener für Datei-Upload (angepasst für V9.1)
+    // V1: Listener für Datei-Upload (angepasst für V9.2)
     fileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) {
@@ -462,7 +458,10 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsElement.innerHTML = '<p>Bitte lade eine Logdatei...</p>';
             headerElement.innerHTML = '';
             v9GraphContainer.innerHTML = '';
-            v9ControlsElement.innerHTML = '<p><i>Lade eine Datei...</i></p>';
+            v9ControlsElement.innerHTML = `
+                <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
+                <input type="number" id="v9-top-n-select" value="6" min="2" max="20" disabled />
+            `;
             currentLogData = null;
             currentStats = [];
             return;
