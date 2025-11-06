@@ -21,6 +21,35 @@
         <label for="jsonUpload" class="upload-label">JSON-Logdatei auswählen</label>
         <input type="file" id="jsonUpload" accept=".json">
 
+        <!--
+          V8-HINZUGEFÜGT: Globaler Zeitstrahl-Graph (Deine Idee)
+        -->
+        <h2>V8: Globale Zeitstrahl-Analyse (Beta)</h2>
+        <details id="v8-container" class="v8-container">
+            <summary>Triangulations-Zeitstrahl anzeigen/verstecken</summary>
+            
+            <div class="v8-content">
+                <p>Wähle die <strong>gemappten</strong> Geräte aus, die im globalen Zeitstrahl (RSSI über Zeit) angezeigt werden sollen. Dies hilft, die Bewegung des Scanners relativ zu bekannten Orten zu verfolgen.</p>
+                
+                <!-- V8: Checkboxen für gemappte Geräte -->
+                <div id="v8-controls" class="v8-controls-list">
+                    <!-- Wird von JS befüllt, wenn eine Datei mit Mapping geladen wird -->
+                    <p><i>Lade eine Datei und speichere ein Mapping, um hier Geräte auszuwählen.</i></p>
+                </div>
+                
+                <!-- V8: Graph-Button -->
+                <button id="v8-generateBtn" class="action-button">
+                    Globalen Graphen generieren
+                </button>
+                
+                <!-- V8: Graph-Container -->
+                <div id="v8-graph-container">
+                    <!-- Der globale SVG-Graph wird hier eingefügt -->
+                </div>
+            </div>
+        </details>
+
+
         <h2>Geräte-Analyse & Mapping</h2>
         
         <!-- V5: Speicher-Button -->
@@ -33,10 +62,7 @@
             Mapping löschen
         </button>
 
-        <!-- 
-          V7-ÄNDERUNG: Leichter Hinweis, dass Karten klickbar sind.
-          Der Rest wird von JS generiert.
-        -->
+        <!-- V7: Analyse-Header -->
         <div id="analysis-header">
              <!-- Wird von JS befüllt, z.B. mit "Analyse von X Geräten..." -->
         </div>
@@ -51,10 +77,10 @@
         <h2>Status-Log (Debug):</h2>
         <pre id="output">Hier erscheinen Statusmeldungen...</pre>
 
-Danksagung: Dieses Tool verwendet [Sparkline-SVGs (erstellt von Gemini)](https://gemini.google.com/), um RSSI-Trends ohne externe Bibliotheken darzustellen.
-
-        <!-- V1: Footer -->
+        <!-- V1/V7: Footer -->
         <footer>
+            Danksagung: Dieses Tool verwendet [Sparkline-SVGs (erstellt von Gemini)](https://gemini.google.com/), um RSSI-Trends ohne externe Bibliotheken darzustellen.
+            <br>
             <a href="https://nullkommaneun.github.io/BeaconBay/" target="_blank" rel="noopener noreferrer">Zurück zu BeaconBay</a>
         </footer>
     </div>
