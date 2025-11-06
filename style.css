@@ -1,6 +1,4 @@
-/*
-  V1: Basis-Theme
-*/
+/* V1: Basis-Theme */
 :root {
     --bg-color: #1a1b26;
     --fg-color: #a9b1d6;
@@ -14,7 +12,7 @@
     --svg-stroke: #7aa2f7;
     --svg-text: #a9b1d6;
     
-    /* V8: Farbpalette für globalen Graphen */
+    /* V8: Farbpalette */
     --color-1: #f7768e; /* Rot */
     --color-2: #9ece6a; /* Grün */
     --color-3: #7aa2f7; /* Blau */
@@ -95,10 +93,8 @@ input[type="file"] { display: none; }
 .action-button.danger { background-color: var(--danger-color); }
 .action-button.danger:hover { background-color: #ff9eaf; }
 
-/*
-  V9-REFAKTORING: V8 zu V9
-*/
-.v9-container { /* (vorher v8-container) */
+/* V9: Zeitstrahl-Analyse */
+.v9-container {
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -111,7 +107,7 @@ input[type="file"] { display: none; }
     color: var(--accent-color);
     cursor: pointer;
 }
-.v9-content { /* (vorher v8-content) */
+.v9-content {
     padding-top: 15px;
 }
 .v9-content p {
@@ -120,8 +116,11 @@ input[type="file"] { display: none; }
     font-size: 0.9rem;
 }
 
-/* V9: Neuer "Intelligenter Filter" (ersetzt v8-controls-list) */
-.v9-controls-simple {
+/*
+  V9.1-KORREKTUR:
+  Selektor von '.v9-controls-simple' (Klasse) zu '#v9-controls-simple' (ID) geändert.
+*/
+#v9-controls-simple {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -130,10 +129,10 @@ input[type="file"] { display: none; }
     padding: 15px;
     border-radius: 5px;
 }
-.v9-controls-simple label {
+#v9-controls-simple label {
     font-weight: bold;
 }
-.v9-controls-simple input[type="number"] {
+#v9-controls-simple input[type="number"] {
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     color: var(--fg-color);
@@ -143,15 +142,15 @@ input[type="file"] { display: none; }
     font-size: 1rem;
     width: 80px;
 }
-.v9-controls-simple input[type="number"]:focus {
+#v9-controls-simple input[type="number"]:focus {
     outline: none;
     border-color: var(--accent-color);
 }
 
-/* V9: Container für globalen Graphen */
+/* V9: Graph-Container */
 #v9-graph-container {
     margin-top: 20px;
-    overflow-x: auto; /* Wichtig für mobile Ansicht */
+    overflow-x: auto;
 }
 .timeline-graph {
     width: 100%;
@@ -205,7 +204,7 @@ input[type="file"] { display: none; }
     color: var(--fg-color);
 }
 
-/* V5: Card-Layout Basis */
+/* V5: Card-Layout */
 #analysis-results { padding: 0; }
 #analysis-results > p {
     margin-bottom: 10px;
@@ -337,6 +336,7 @@ input[type="file"] { display: none; }
     border: 1px solid var(--border-color);
     padding: 10px;
 }
+/* ... (Rest des Sparkline-Stylings unverändert) ... */
 .rssi-sparkline .spark-line {
     fill: none;
     stroke: var(--svg-stroke);
@@ -352,6 +352,7 @@ input[type="file"] { display: none; }
     stroke-width: 1;
     stroke-dasharray: 2 2;
 }
+
 
 /* V4: Error-Styling */
 .error-message {
