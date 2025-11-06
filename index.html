@@ -22,28 +22,28 @@
         <input type="file" id="jsonUpload" accept=".json">
 
         <!--
-          V8-HINZUGEFÜGT: Globaler Zeitstrahl-Graph (Deine Idee)
+          V9-REFAKTORING: V8-Container (Deine Idee, jetzt mit "intelligentem Filter")
         -->
-        <h2>V8: Globale Zeitstrahl-Analyse (Beta)</h2>
-        <details id="v8-container" class="v8-container">
+        <h2>V9: Globale Zeitstrahl-Analyse (Beta)</h2>
+        <details id="v9-container" class="v9-container">
             <summary>Triangulations-Zeitstrahl anzeigen/verstecken</summary>
             
-            <div class="v8-content">
-                <p>Wähle die <strong>gemappten</strong> Geräte aus, die im globalen Zeitstrahl (RSSI über Zeit) angezeigt werden sollen. Dies hilft, die Bewegung des Scanners relativ zu bekannten Orten zu verfolgen.</p>
+            <div class="v9-content">
+                <p>Zeichnet die RSSI-Verläufe der "redseeligsten" (aktivsten) Geräte in einem globalen Graphen. Das Mapping wird für die Legende verwendet, falls vorhanden.</p>
                 
-                <!-- V8: Checkboxen für gemappte Geräte -->
-                <div id="v8-controls" class="v8-controls-list">
-                    <!-- Wird von JS befüllt, wenn eine Datei mit Mapping geladen wird -->
-                    <p><i>Lade eine Datei und speichere ein Mapping, um hier Geräte auszuwählen.</i></p>
+                <!-- V9: "Intelligenter Filter" (ersetzt die V8-Checkbox-Liste) -->
+                <div class="v9-controls-simple">
+                    <label for="v9-top-n-select">Anzahl der Top-Geräte:</label>
+                    <input type="number" id="v9-top-n-select" value="6" min="2" max="20" />
                 </div>
                 
-                <!-- V8: Graph-Button -->
-                <button id="v8-generateBtn" class="action-button">
+                <!-- V9: Graph-Button (vorher V8) -->
+                <button id="v9-generateBtn" class="action-button">
                     Globalen Graphen generieren
                 </button>
                 
-                <!-- V8: Graph-Container -->
-                <div id="v8-graph-container">
+                <!-- V9: Graph-Container (vorher V8) -->
+                <div id="v9-graph-container">
                     <!-- Der globale SVG-Graph wird hier eingefügt -->
                 </div>
             </div>
