@@ -22,15 +22,21 @@
         <input type="file" id="jsonUpload" accept=".json">
 
         <!--
-          V4-ÄNDERUNG: Wir ersetzen das <div> durch eine <table_wrapper>
-          und eine <table>, um die V4-Statistiken anzuzeigen.
+          V5-ÄNDERUNG: Titel angepasst und Speicher-Button hinzugefügt.
         -->
-        <h2>Analyse-Ergebnisse: Geräte-Statistiken</h2>
-        <div id="analysis-results-wrapper">
-            <div id="analysis-results">
-                <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
-                <!-- Die Tabelle wird hier von app.js (V4) eingefügt -->
-            </div>
+        <h2>Geräte-Analyse & Mapping</h2>
+        
+        <button id="saveMappingBtn" class="action-button">
+            Mapping im Browser speichern
+        </button>
+
+        <!--
+          V5-ÄNDERUNG: Der Wrapper für horizontales Scrollen wird entfernt.
+          Die Karten werden von Natur aus responsiv sein.
+        -->
+        <div id="analysis-results">
+            <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
+            <!-- Die Karten werden hier von app.js (V5) eingefügt -->
         </div>
 
         <!-- V3: Debug/Status-Fenster -->
@@ -47,4 +53,3 @@
 </html>
 
 
- 
