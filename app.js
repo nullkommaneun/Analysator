@@ -1,72 +1,128 @@
-// V4: Haupt-App-Logik (Statistik-Analyse)
+// V5: Haupt-App-Logik (Responsive "Card"-Layout & localStorage-Mapping)
 
 // V2: Globaler "State"
 let currentLogData = null;
 
 /**
- * V4: Haupt-Analysefunktion (ersetzt V3 'displayAnalysis')
- * Analysiert das 'devices'-Array und zeigt Statistiken in einer Tabelle an.
+ * ARCHITEKTUR-HINWEIS (V5):
+ * Wir definieren den localStorage-Key als Konstante,
+ * um Tippfehler zu vermeiden (Regel 1).
+ */
+const MAPPING_STORAGE_KEY = 'beaconbay-mapping';
+
+
+/**
+ * V5: Lädt das ID->Name Mapping aus dem localStorage.
+ * @returns {object} Ein Objekt, das Beacon-IDs auf lesbare Namen abbildet.
+ */
+function loadMapping() {
+    try {
+        const mappingJson = localStorage.getItem(MAPPING_STORAGE_KEY);
+        if (mappingJson) {
+            // Erfolgreich geladen
+            return JSON.parse(mappingJson);
+        }
+    } catch (error) {
+        // Fehlerbehandlung, falls das JSON im localStorage korrupt ist
+        console.error("Fehler beim Parsen des Mappings aus localStorage:", error);
+        localStorage.removeItem(MAPPING_STORAGE_KEY); // Korrupte Daten entfernen
+    }
+    // Standard-Rückgabewert (leeres Objekt)
+    return {};
+}
+
+/**
+ * V5: Speichert das aktuelle Mapping aus den Input-Feldern im localStorage.
+ * @param {HTMLElement} resultsContainer - Das DOM-Element, das die Karten enthält.
+ * @param {HTMLElement} outputElement - Das Debug-Fenster für Statusmeldungen.
+ */
+function saveMapping(resultsContainer, outputElement) {
+    const newMapping = {};
+    
+    // Finde alle Input-Felder im Analyse-Ergebnisbereich
+    const inputs = resultsContainer.querySelectorAll('.mapping-input');
+    
+    let savedCount = 0;
+    
+    // Iteriere über alle Input-Felder
+    for (const input of inputs) {
+        // V5-ARCHITEKTUR: Wir nutzen 'data-beacon-id', das wir beim
+        // Rendern gesetzt haben, um die ID zu holen.
+        const beaconId = input.dataset.beaconId;
+        const mappedName = input.value.trim(); // Leerzeichen entfernen
+
+        // Speichere nur, wenn ein Name eingegeben wurde
+        if (beaconId && mappedName) {
+            newMapping[beaconId] = mappedName;
+            savedCount++;
+        }
+    }
+
+    // Speichere das neue Mapping-Objekt als JSON-String
+    try {
+        localStorage.setItem(MAPPING_STORAGE_KEY, JSON.stringify(newMapping));
+        
+        // Erfolgsmeldung im Status-Log
+        const logMsg = `[${new Date().toLocaleTimeString()}] Mapping erfolgreich gespeichert. ${savedCount} Einträge gesichert.`;
+        console.log(logMsg);
+        outputElement.textContent += `\n${logMsg}`;
+        // Scrolle das Log nach unten
+        outputElement.scrollTop = outputElement.scrollHeight;
+
+    } catch (error) {
+        // Fehlerbehandlung (z.B. wenn localStorage voll ist)
+        console.error("Fehler beim Speichern des Mappings im localStorage:", error);
+        const logMsg = `[FEHLER] Mapping konnte nicht gespeichert werden: ${error.message}`;
+        outputElement.textContent += `\n${logMsg}`;
+        outputElement.scrollTop = outputElement.scrollHeight;
+    }
+}
+
+
+/**
+ * V5: Haupt-Analysefunktion (ersetzt V4 'analyzeAndDisplay')
+ * Analysiert das 'devices'-Array und zeigt die Daten als "Cards" an.
  *
- * @param {Array<object>} devicesArray - Das 'devices'-Array aus dem JSON (currentLogData.devices)
+ * @param {Array<object>} devicesArray - Das 'devices'-Array (currentLogData.devices)
  * @param {HTMLElement} resultsContainer - Das DOM-Element, in das geschrieben wird.
  */
 function analyzeAndDisplay(devicesArray, resultsContainer) {
-    // V3-FIX (angepasst an V4):
-    // Wir prüfen jetzt, ob wir das 'devices'-Array (logData.devices) erhalten haben.
+    // V4: Validierung
     if (!Array.isArray(devicesArray)) {
-        // Dieser Fall sollte durch die Prüfung in 'onload' bereits abgefangen werden,
-        // aber doppelte Sicherheit (defensive Programmierung) ist gut.
         console.error("Analyse-Fehler: Es wurde kein 'devices'-Array übergeben.", devicesArray);
-        resultsContainer.innerHTML = `
-            <p class="error-message">
-                <strong>Analyse-Fehler:</strong><br>
-                Die Datenstruktur ist ungültig. Konnte 'devices'-Array nicht finden.
-            </p>`;
+        resultsContainer.innerHTML = `<p class="error-message"><strong>Analyse-Fehler:</strong><br>Datenstruktur ungültig.</p>`;
         return;
     }
-    
     if (devicesArray.length === 0) {
-        resultsContainer.innerHTML = `<p>Logdatei enthält 0 Geräte. Nichts zu analysieren.</p>`;
+        resultsContainer.innerHTML = `<p>Logdatei enthält 0 Geräte.</p>`;
         return;
     }
 
-    // ARCHITEKTUR-HINWEIS (V4):
-    // Wir iterieren nicht mehr über Scan-Events, sondern über Geräte.
-    // Jedes Gerät enthält bereits sein eigenes 'rssiHistory'-Array.
-    // Wir sammeln die Statistiken, die wir in V4 anzeigen wollen.
+    // V5: Gespeichertes Mapping laden, *bevor* wir die Karten generieren
+    const mapping = loadMapping();
+
+    // V4: Statistiken sammeln (Logik unverändert)
     const stats = [];
-    
     for (const device of devicesArray) {
-        // Defensivprogrammierung: Überspringe ungültige Geräteeinträge
-        if (!device || !device.id || !Array.isArray(device.rssiHistory)) {
-            console.warn("Ungültiger Geräteeintrag im Log übersprungen:", device);
-            continue;
-        }
+        if (!device || !device.id || !Array.isArray(device.rssiHistory)) continue;
 
         const rssiEvents = device.rssiHistory;
         const count = rssiEvents.length;
-
         let rssiSum = 0;
-        let maxRssi = -Infinity; // Startwert für 'Maximum finden'
+        let maxRssi = -Infinity;
 
         if (count > 0) {
             for (const event of rssiEvents) {
-                // V4-FIX: Stellen sicher, dass 'r' (rssi) eine Zahl ist
                 if (typeof event.r === 'number') {
                     rssiSum += event.r;
-                    if (event.r > maxRssi) {
-                        maxRssi = event.r;
-                    }
+                    if (event.r > maxRssi) maxRssi = event.r;
                 }
             }
         } else {
-            maxRssi = null; // Kein Max-Wert, wenn keine Events da sind
+            maxRssi = null;
         }
-
-        // V4: Durchschnitts-RSSI berechnen (und durch 0-Teilung verhindern)
         const avgRssi = (count > 0) ? (rssiSum / count).toFixed(2) : null;
 
-        // V4: Statistik-Objekt für dieses Gerät sammeln
         stats.push({
             id: device.id,
             name: device.name || "[Unbenannt]",
@@ -76,64 +132,63 @@ function analyzeAndDisplay(devicesArray, resultsContainer) {
         });
     }
 
-    // V4: Sortieren der Ergebnisse
-    // ARCHITEKTUR-HINWEIS (Regel 1):
-    // Wir sortieren die Tabelle. Ein guter Standard ist, nach der
-    // maximalen Signalstärke (maxRssi) absteigend zu sortieren.
-    // Geräte, die dem Scanner am nächsten kamen (höchster RSSI),
-    // sind für die Kartierung am wichtigsten.
-    stats.sort((a, b) => {
-        // V4-FIX: Umgang mit 'null' Werten (Geräte ohne Scans)
-        const rssiA = a.maxRssi ?? -Infinity;
-        const rssiB = b.maxRssi ?? -Infinity;
-        return rssiB - rssiA; // Absteigend (von -50 (nah) zu -90 (fern))
-    });
+    // V4: Sortieren nach bestem RSSI (unverändert)
+    stats.sort((a, b) => (b.maxRssi ?? -Infinity) - (a.maxRssi ?? -Infinity));
 
-
-    // V4: HTML-Tabelle generieren
+    // V5-REFACTOR: HTML-String für "Cards" generieren (statt <table>)
     let htmlOutput = `
-        <p>Analyse von <strong>${devicesArray.length}</strong> Geräten abgeschlossen.</p>
-        <table class="stats-table">
-            <thead>
-                <tr>
-                    <th>Device ID (Anonym)</th>
-                    <th>Bekannter Name</th>
-                    <th>Scan-Events (Anzahl)</th>
-                    <th>Avg. RSSI (dBm)</th>
-                    <th>Max RSSI (Nächster Wert)</th>
-                </tr>
-            </thead>
-            <tbody>
+        <p style="background: none; padding: 0 0 10px 0;">
+            Analyse von <strong>${devicesArray.length}</strong> Geräten abgeschlossen. 
+            (Sortiert nach bestem Signal)
+        </p>
     `;
 
     for (const device of stats) {
+        // V5: Hole den gemappten Namen aus dem geladenen Mapping
+        const mappedName = mapping[device.id] || '';
+
         htmlOutput += `
-            <tr>
-                <td>${device.id}</td>
-                <td>${escapeHTML(device.name)}</td> <!-- V4-FIX: Namen escapen (Regel 2) -->
-                <td>${device.count}</td>
-                <td>${device.avgRssi ?? 'N/A'}</td>
-                <td>${device.maxRssi ?? 'N/A'}</td>
-            </tr>
+            <div class="device-card">
+                <div class="card-row">
+                    <span class="card-label">Device ID:</span>
+                    <span class="card-value mono">${device.id}</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Bek. Name:</span>
+                    <span class="card-value name">${escapeHTML(device.name)}</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Scan-Events:</span>
+                    <span class="card-value mono">${device.count}</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Avg. RSSI:</span>
+                    <span class="card-value mono">${device.avgRssi ?? 'N/A'} dBm</span>
+                </div>
+                <div class="card-row">
+                    <span class="card-label">Max. RSSI:</span>
+                    <span class="card-value mono rssi-max">${device.maxRssi ?? 'N/A'} dBm</span>
+                </div>
+                <!-- V5: Mapping-Input-Zeile -->
+                <div class="card-row mapping-row">
+                    <label for="map-${device.id}" class="card-label">Mapping (Ort):</label>
+                    <input 
+                        type="text" 
+                        id="map-${device.id}" 
+                        class="mapping-input"
+                        data-beacon-id="${device.id}" 
+                        value="${escapeHTML(mappedName)}"
+                        placeholder="z.B. FTS Ladestation 1">
+                </div>
+            </div>
         `;
     }
-
-    htmlOutput += `
-            </tbody>
-        </table>
-    `;
 
     resultsContainer.innerHTML = htmlOutput;
 }
 
 /**
- * V4-HINZUGEFÜGT (Regel 2: Proaktives Mitdenken):
- * Wir müssen Gerätenamen "escapen", bevor wir sie als HTML einfügen.
- * Wenn ein Beacon einen Namen wie "<script>alert('XSS')</script>" sendet,
- * würde das sonst unseren Analysator kompromittieren (XSS-Angriff).
- *
- * @param {string} str - Der potenziell unsichere String.
- * @returns {string} - Der HTML-gesicherte String.
+ * V4: HTML-Escaping-Funktion (unverändert)
  */
 function escapeHTML(str) {
     if (typeof str !== 'string') return str;
@@ -145,24 +200,29 @@ function escapeHTML(str) {
         .replace(/'/g, '&#039;');
 }
 
-
 // V1/V2: Haupt-Event-Listener
 document.addEventListener('DOMContentLoaded', () => {
     
-    // V3: DOM-Elemente cachen
+    // V5: Alle UI-Elemente holen
     const fileInput = document.getElementById('jsonUpload');
     const outputElement = document.getElementById('output');
     const resultsElement = document.getElementById('analysis-results');
+    const saveButton = document.getElementById('saveMappingBtn');
 
-    if (!fileInput || !outputElement || !resultsElement) {
+    if (!fileInput || !outputElement || !resultsElement || !saveButton) {
         console.error("Kritischer Fehler: UI-Elemente wurden nicht im DOM gefunden.");
         if(outputElement) outputElement.textContent = "UI-Initialisierungsfehler.";
         return;
     }
 
+    // V5: Event-Listener für den Speicher-Button
+    saveButton.addEventListener('click', () => {
+        saveMapping(resultsElement, outputElement);
+    });
+
+    // V1: Event-Listener für Datei-Upload
     fileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
-
         if (!file) {
             outputElement.textContent = 'Dateiauswahl abgebrochen.';
             resultsElement.innerHTML = '<p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>';
@@ -179,45 +239,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const fileContent = e.target.result;
 
             try {
-                // V2: Parsen (blockierend)
+                // V2: Parsen
                 currentLogData = JSON.parse(fileContent);
 
-                // V4-FIX (Bugfix):
-                // Wir prüfen die neue, korrekte Struktur (Objekt mit 'devices'-Array)
+                // V4: Struktur validieren
                 if (typeof currentLogData === 'object' && currentLogData !== null && Array.isArray(currentLogData.devices)) {
                     
                     outputElement.textContent = `Datei: ${file.name}\nStatus: Erfolgreich geparst.\nStruktur: Objekt mit ${currentLogData.devices.length} Geräten gefunden.\nStarte Analyse...`;
 
-                    // V4: Rufe die Analysefunktion mit dem 'devices'-Array auf
+                    // V5: Analysefunktion aufrufen
                     analyzeAndDisplay(currentLogData.devices, resultsElement);
 
-                    outputElement.textContent += "\nAnalyse abgeschlossen.";
+                    outputElement.textContent += "\nAnalyse abgeschlossen. Mapping aus localStorage geladen.";
 
                 } else {
-                    // V4-FIX: Die Datei ist gültiges JSON, aber nicht, was wir erwarten.
                     throw new Error("Die JSON-Datei hat nicht die erwartete Struktur. Ein 'devices'-Array (logData.devices) wurde nicht gefunden.");
                 }
 
             } catch (error) {
-                // V2/V3: Fehlerbehandlung (ungültiges JSON oder V4-Strukturfehler)
-                console.error('Fehler beim Parsen oder Validieren der Struktur:', error);
+                // V4: Fehlerbehandlung
+                console.error('Fehler beim Parsen oder Validieren:', error);
                 const errorMsg = `Fehler: ${error.message}`;
-                
                 outputElement.textContent = errorMsg;
                 resultsElement.innerHTML = `<p class="error-message"><strong>Lade-Fehler:</strong><br>${escapeHTML(errorMsg)}</p>`;
-                
                 currentLogData = null;
             }
         };
 
         reader.onerror = (e) => {
-            // V1: Fehlerbehandlung (Lesefehler)
+            // V1: Fehlerbehandlung
             console.error('Fehler beim Lesen der Datei:', e);
-            const errorMsg = `Fehler: Die Datei konnte nicht gelesen werden.\n\nDetails: ${e.message}`;
-            
+            const errorMsg = `Fehler: Die Datei konnte nicht gelesen werden. Details: ${e.message}`;
             outputElement.textContent = errorMsg;
             resultsElement.innerHTML = `<p class="error-message"><strong>Lade-Fehler:</strong><br>${escapeHTML(errorMsg)}</p>`;
-            
             currentLogData = null;
         };
 
