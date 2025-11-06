@@ -1,7 +1,6 @@
 /*
   V1: Basis-Theme (unverändert)
 */
-
 :root {
     --bg-color: #1a1b26;
     --fg-color: #a9b1d6;
@@ -11,6 +10,7 @@
     --accent-hover: #9ece6a;
     --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: 'Consolas', 'Menlo', 'Courier New', monospace;
+    --danger-color: #f7768e;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,7 +24,7 @@ body {
 }
 
 .container {
-    max-width: 1000px;
+    max-width: 1200px; /* V4: Verbreitert für Tabellen */
     margin: 0 auto;
     padding: 20px;
     background-color: var(--card-color);
@@ -63,13 +63,13 @@ input[type="file"] { display: none; }
 
 .upload-label:hover { background-color: var(--accent-hover); }
 
-/* V1: Rohdaten-Output (unverändert) */
+/* V3: Status-Output (unverändert) */
 #output {
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     border-radius: 5px;
     padding: 15px;
-    min-height: 100px; /* Reduziert, da es jetzt ein Statusfenster ist */
+    min-height: 100px;
     max-height: 300px;
     overflow: auto;
     white-space: pre-wrap;
@@ -80,10 +80,15 @@ input[type="file"] { display: none; }
 }
 
 /*
-  V3-HINZUGEFÜGT: Styling für den neuen Analyse-Ergebnisbereich.
-  Wir gestalten es ähnlich wie den Output, aber mit normaler Schrift
-  und etwas mehr "Luft".
+  V4-ÄNDERUNG: Wrapper für die Tabelle, um horizontales
+  Scrollen auf kleinen Bildschirmen zu ermöglichen, ohne
+  das gesamte Layout zu zerbrechen (Regel 2).
 */
+#analysis-results-wrapper {
+    overflow-x: auto; /* Aktiviert horizontales Scrollen NUR für die Tabelle */
+}
+
+/* V3: Basis-Styling für den Ergebnisbereich */
 #analysis-results {
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
@@ -96,20 +101,56 @@ input[type="file"] { display: none; }
     margin-bottom: 10px;
 }
 
-/* Styling für die ID-Liste, die wir in V3 generieren */
-#analysis-results ul {
-    list-style-type: none;
-    padding-left: 0;
+/*
+  V4-HINZUGEFÜGT: Styling für die Statistik-Tabelle
+*/
+.stats-table {
+    width: 100%;
+    border-collapse: collapse; /* Saubere Ränder */
+    min-width: 600px; /* Verhindert, dass die Tabelle zu stark gequetscht wird */
 }
 
-#analysis-results li {
-    font-family: var(--font-mono); /* IDs sind Code, also Monospace */
-    background-color: var(--card-color);
+.stats-table th,
+.stats-table td {
     border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    margin-bottom: 5px;
-    border-radius: 4px;
-    word-break: break-all; /* Wichtig für lange IDs */
+    padding: 10px 12px;
+    text-align: left;
+    /* V4-FIX: Erlaubt das Umbrechen von langen IDs */
+    word-break: break-all; 
+    vertical-align: top;
+}
+
+.stats-table th {
+    background-color: var(--card-color);
+    color: var(--accent-hover);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.stats-table tbody tr:hover {
+    background-color: #2a2e42; /* Leichter Hover-Effekt */
+}
+
+.stats-table td:nth-child(1) {
+    font-family: var(--font-mono); /* Device ID */
+    font-size: 0.85rem;
+}
+.stats-table td:nth-child(2) {
+    font-weight: bold; /* Device Name */
+}
+.stats-table td:nth-child(3),
+.stats-table td:nth-child(4),
+.stats-table td:nth-child(5) {
+    text-align: right; /* Zahlen rechtsbündig */
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+}
+
+/* V4: Styling für Fehlermeldungen im Analysefenster */
+.error-message {
+    color: var(--danger-color);
+    font-family: var(--font-mono);
+    font-weight: bold;
 }
 
 /* V1: Footer (unverändert) */
