@@ -25,7 +25,11 @@
     --color-10: #a9b1d6; /* Grau (Fallback) */
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
 body {
     font-family: var(--font-main);
@@ -59,7 +63,9 @@ h2 {
 }
 
 /* V1: Upload-Button */
-input[type="file"] { display: none; }
+input[type="file"] {
+    display: none;
+}
 .upload-label {
     display: inline-block;
     padding: 12px 20px;
@@ -71,7 +77,9 @@ input[type="file"] { display: none; }
     transition: background-color 0.3s ease;
     margin-bottom: 10px;
 }
-.upload-label:hover { background-color: var(--accent-hover); }
+.upload-label:hover {
+    background-color: var(--accent-hover);
+}
 
 /* V5/V6: Action-Buttons */
 .action-button {
@@ -88,10 +96,16 @@ input[type="file"] { display: none; }
     transition: background-color 0.3s ease;
     margin-bottom: 10px;
 }
-.action-button:hover { background-color: #b9f27c; }
+.action-button:hover {
+    background-color: #b9f27c;
+}
 
-.action-button.danger { background-color: var(--danger-color); }
-.action-button.danger:hover { background-color: #ff9eaf; }
+.action-button.danger {
+    background-color: var(--danger-color);
+}
+.action-button.danger:hover {
+    background-color: #ff9eaf;
+}
 
 /* V9: Zeitstrahl-Analyse */
 .v9-container {
@@ -116,10 +130,7 @@ input[type="file"] { display: none; }
     font-size: 0.9rem;
 }
 
-/*
-  V9.1-KORREKTUR:
-  Selektor von '.v9-controls-simple' (Klasse) zu '#v9-controls-simple' (ID) geändert.
-*/
+/* V9: Intelligenter Filter */
 #v9-controls-simple {
     display: flex;
     align-items: center;
@@ -180,6 +191,44 @@ input[type="file"] { display: none; }
     stroke: var(--fg-color);
 }
 
+/*
+  V10-HINZUGEFÜGT: Export-Controls
+*/
+.v9-export-controls {
+    display: none; /* Standardmäßig versteckt */
+    flex-direction: row; /* Nebeneinander */
+    gap: 10px;
+    margin-top: 20px;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 20px;
+}
+.v9-export-controls.visible {
+    display: flex; /* Wird von JS auf 'flex' gesetzt */
+}
+.export-button {
+    flex-grow: 1; /* Beide Buttons gleich breit */
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: var(--bg-color);
+    background-color: var(--accent-color);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+.export-button.json {
+    background-color: var(--color-5); /* Orange */
+}
+.export-button:hover {
+    background-color: var(--accent-hover);
+}
+.export-button.json:hover {
+    background-color: #ffb78b; /* Helleres Orange */
+}
+
 
 /* V3: Status-Output */
 #output {
@@ -205,7 +254,9 @@ input[type="file"] { display: none; }
 }
 
 /* V5: Card-Layout */
-#analysis-results { padding: 0; }
+#analysis-results {
+    padding: 0;
+}
 #analysis-results > p {
     margin-bottom: 10px;
     padding: 15px;
@@ -241,7 +292,9 @@ input[type="file"] { display: none; }
     line-height: 1.4;
     transition: background-color 0.2s ease;
 }
-.device-card .card-row:last-child { border-bottom: none; }
+.device-card .card-row:last-child {
+    border-bottom: none;
+}
 .card-label {
     font-weight: bold;
     color: var(--fg-color);
@@ -309,7 +362,9 @@ input[type="file"] { display: none; }
     background-color: #16161e;
     border-top: 1px solid var(--border-color);
 }
-.card-details.active { display: block; }
+.card-details.active {
+    display: block;
+}
 .card-details h4 {
     color: var(--accent-color);
     margin-bottom: 10px;
@@ -336,7 +391,6 @@ input[type="file"] { display: none; }
     border: 1px solid var(--border-color);
     padding: 10px;
 }
-/* ... (Rest des Sparkline-Stylings unverändert) ... */
 .rssi-sparkline .spark-line {
     fill: none;
     stroke: var(--svg-stroke);
@@ -352,7 +406,6 @@ input[type="file"] { display: none; }
     stroke-width: 1;
     stroke-dasharray: 2 2;
 }
-
 
 /* V4: Error-Styling */
 .error-message {
@@ -375,4 +428,4 @@ footer a {
 }
 footer a:hover {
     color: var(--accent-hover);
-}
+    } 
