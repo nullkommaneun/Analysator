@@ -28,23 +28,30 @@
             Mapping im Browser speichern
         </button>
         
-        <!--
-          V6-HINZUGEFÜGT: "Mapping löschen"-Button.
-          Wir fügen die Klasse 'danger' hinzu, um ihn rot zu gestalten (Regel 2).
-        -->
+        <!-- V6: Löschen-Button -->
         <button id="clearMappingBtn" class="action-button danger">
             Mapping löschen
         </button>
 
+        <!-- 
+          V7-ÄNDERUNG: Leichter Hinweis, dass Karten klickbar sind.
+          Der Rest wird von JS generiert.
+        -->
+        <div id="analysis-header">
+             <!-- Wird von JS befüllt, z.B. mit "Analyse von X Geräten..." -->
+        </div>
+
         <!-- V5: Karten-Container -->
         <div id="analysis-results">
             <p>Bitte lade eine Logdatei, um die Analyse zu starten.</p>
-            <!-- Die Karten werden hier von app.js (V6) eingefügt -->
+            <!-- Die Karten werden hier von app.js (V7) eingefügt -->
         </div>
 
         <!-- V3: Debug/Status-Fenster -->
         <h2>Status-Log (Debug):</h2>
         <pre id="output">Hier erscheinen Statusmeldungen...</pre>
+
+Danksagung: Dieses Tool verwendet [Sparkline-SVGs (erstellt von Gemini)](https://gemini.google.com/), um RSSI-Trends ohne externe Bibliotheken darzustellen.
 
         <!-- V1: Footer -->
         <footer>
